@@ -9,6 +9,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.UIElements;
 using static CommonStructures;
+using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
 using static UnityEngine.UI.CanvasScaler;
 
 public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IMapSaveLoad
@@ -42,6 +43,14 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     public float radius = 0.2f;
     public float movementSpeed = 0.92f;
     public float rotationSpeed = 5.0f;
+
+
+    public enum State
+    {
+        Idle, Moving
+    }
+
+    public State movementState = State.Idle;
 
     [Flags]
     public enum MovementFlag : uint
@@ -112,11 +121,20 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         flags &= ~state;
     }
 
-    public void SetPositionData(List<Vector3> newPositions)
+    public void SetPositionData(List<Vector3> newPositions, bool notInvokeMove = false)
     {
         positions.Clear();
+        if (newPositions.Count == 0)
+        {
+            return;
+        }
         positions.AddRange(newPositions);
-        OnStartMoving?.Invoke();
+        if (!notInvokeMove) 
+            OnStartMoving?.Invoke();
+        
+        if (movementState == State.Idle)
+            movementState = State.Moving;
+        
         if (!enabled) enabled = true;
     }
 
@@ -125,16 +143,20 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         return positions.Count > 0;
     }
 
-    public void Stop()
+    public void Stop(bool invokeOnStop = true)
     {
         if (enabled)
         {
-            enabled = false;
             if (positions.Count > 0)
             {
-                OnStopMoving?.Invoke();
+                if (invokeOnStop)
+                    OnStopMoving?.Invoke(); 
+
                 positions.Clear();
             }
+            if (movementState == State.Moving)
+                movementState = State.Idle;
+            enabled = false;
         }
     }
 
@@ -399,7 +421,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         return areaMask;
     }
 
-    public void StartPathfind(Vector3 newPosition)
+    public void StartPathfind(Vector3 newPosition, bool isMoving = false)
     {
         List<Vector3> pathPoints = new List<Vector3>();
         NavMeshPath path = new NavMeshPath();
@@ -415,16 +437,29 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             Debug.Log($"Used pathfinding using navmesh and path count is {path.corners.Length}");
             if (IsOnShip())
             {
+                int counter = 0;
                 foreach (Vector3 p in path.corners)
                 {
+                    if (counter == 0)
+                    {
+                        counter++;
+                        continue;
+                    }
                     Vector3 localPoint = transform.parent.InverseTransformPoint(p);
                     pathPoints.Add(localPoint);
+                    counter++;
                 }
             }
             else
             {
+                int counter = 0;
                 foreach (Vector3 p in path.corners)
                 {
+                    if (counter == 0)
+                    {
+                        counter++;
+                        continue;
+                    }
                     Vector3 position = p;
                     RaycastHit? hit = SelectionController.FindProperHit(position, areaMask);
                     if (hit != null)
@@ -432,11 +467,13 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
                         position = hit.Value.point;
                     }
                     pathPoints.Add(position);
+                    counter++;
                 }
                 
                 //pathPoints.AddRange(path.corners);
             }
-            SetPositionData(pathPoints);
+
+            SetPositionData(pathPoints, isMoving);
             return;
         }
 

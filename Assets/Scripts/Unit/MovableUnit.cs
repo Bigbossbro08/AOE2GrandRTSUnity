@@ -16,36 +16,87 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         public MovableUnitData() { type = "MovableUnitData"; }
     }
 
+    // TEMP
+    public BasicAttackAIModule basicAttackAIModule;
+
     public MovementComponent movementComponent;
+    public ActionComponent combatComponent;
 
     [SerializeField] DeterministicVisualUpdater DeterministicVisualUpdater;
 
-    //Vector3 lastPosition;
+    int actionBlock = 0;
+
     Vector2Int lastGridCell;
 
-    string standSprite = "idle_archer";
+    public string standSprite = "idle_archer";
 
-    string walkSprite = "move_archer";
+    public string walkSprite = "move_archer";
 
-    //string actionSprite = "attack_archer";
+    public void IncrementActionBlock()
+    {
+        actionBlock++;
+    }
+
+    public void DecrementActionBlock()
+    {
+        actionBlock--;
+    }
 
     private void Awake()
     {
         movementComponent = GetComponent<MovementComponent>();
     }
 
-    void LoadMovableData(string unitDataName)
+    public DeterministicVisualUpdater GetDeterministicVisualUpdater()
+    {
+        return DeterministicVisualUpdater;
+    }
+
+    void LoadMovableData(string unitDataName, bool callVisualUpdate = false)
     {
         UnitManager.MilitaryUnit militaryUnit = UnitManager.Instance.LoadMilitaryUnit(unitDataName);
         gameObject.tag = "Military Unit";
         standSprite = militaryUnit.standing;
         walkSprite = militaryUnit.walking;
+        if (combatComponent)
+        {
+            combatComponent.SetActionSprite(militaryUnit.attacking);
+        }
+
+        if (callVisualUpdate) {
+            System.Action action = () =>
+            {
+                if (DeterministicVisualUpdater)
+                {
+                    DeterministicVisualUpdater.SetSpriteName(standSprite, true);
+                    DeterministicVisualUpdater.PlayOrResume(true);
+                }
+            };
+
+            DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
+        }
+    }
+
+    public void ResetUnit()
+    {
+        if (movementComponent)
+        {
+            movementComponent.Stop();
+        }
+        if (combatComponent)
+        {
+            combatComponent.StopAction();
+        }
+        if (basicAttackAIModule)
+        {
+            basicAttackAIModule.enabled = false;
+        }
     }
 
     private void OnEnable()
     {
         Initialize();
-        LoadMovableData(unitDataName);
+        LoadMovableData(unitDataName, true);
         UnitManager.Instance.spatialHashGrid.Register(this);
         lastGridCell = SpatialHashGrid.GetCell(transform.position);
 
@@ -54,6 +105,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         {
             movementComponent.OnStartMoving += MovementComponent_OnStartMoving;
             movementComponent.OnStopMoving += MovementComponent_OnStopMoving;
+            movementComponent.OnMoving += MovementComponent_OnMoving;
         }
     }
 
@@ -64,12 +116,18 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         {
             movementComponent.OnStartMoving -= MovementComponent_OnStartMoving;
             movementComponent.OnStopMoving -= MovementComponent_OnStopMoving;
-            //movementComponent.OnMoving -= MovementComponent_OnMoving;
+            movementComponent.OnMoving -= MovementComponent_OnMoving;
         }
     }
 
     private void MovementComponent_OnMoving()
     {
+        if (movementComponent.movementState == MovementComponent.State.Moving &&
+            DeterministicVisualUpdater.spriteName != walkSprite &&
+            !combatComponent.IsPlayingAction())
+        {
+            DeterministicVisualUpdater.SetSpriteName(walkSprite, true);
+        }
         //UnitManager.Instance.spatialHashGrid.UpdateUnit(gameObject);
     }
 
@@ -77,6 +135,9 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
     {
         if (DeterministicVisualUpdater)
         {
+            string sprite = standSprite;
+            if (actionBlock > 0)
+                sprite = combatComponent.spriteName;
             DeterministicVisualUpdater.SetSpriteName(standSprite, true);
             DeterministicVisualUpdater.PlayOrResume(false);
         }
@@ -186,6 +247,14 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
+        if (actionBlock > 0)
+        {
+            if (movementComponent)
+            {
+                movementComponent.Stop(false);
+            }
+        }
+
         Vector2Int newGridCell = SpatialHashGrid.GetCell(transform.position);
         if (lastGridCell != newGridCell)
         {

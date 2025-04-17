@@ -117,6 +117,12 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
                     moveUnitsCommand.Execute();
                 }
                 break;
+            case AttackUnitCommand.commandName:
+                {
+                    AttackUnitCommand attackUnitCommand = command as AttackUnitCommand;
+                    attackUnitCommand.Execute();
+                }
+                break;
         }
     }
 

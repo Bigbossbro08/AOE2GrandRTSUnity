@@ -34,7 +34,8 @@ public class GameManager : MonoBehaviour
         }
         if (loadAmount == 2)
         {
-            MapLoader.Instance.enabled = true;
+            IncrementLoadCount();
+            //MapLoader.Instance.enabled = true;
         }
         if (loadAmount >= targetAmountToLoad)
         {

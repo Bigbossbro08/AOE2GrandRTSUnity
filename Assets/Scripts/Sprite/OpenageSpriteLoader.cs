@@ -458,6 +458,8 @@ public class OpenageSpriteLoader : MonoBehaviour
         // 0 for now
         float frameDuration = currentFrameIdx * spriteData.layerDatas[0].timePerFrame;
 
+        Debug.Log($"{spriteName}: {spriteData.layerDatas[0].mode.ToString()}");
+
         NewSpriteDataStorage spriteDataStorage = new NewSpriteDataStorage
         {
             texture = texture,

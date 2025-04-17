@@ -28,7 +28,7 @@ public class SpritePlayer : MonoBehaviour
         {
             //elapsedTime = 0.0f;
         }
-        enabled = false;
+        //enabled = false;
     }
 
     private void DeterministicVisualUpdater_OnPlayOrResumeEvent(bool resume)
@@ -37,7 +37,7 @@ public class SpritePlayer : MonoBehaviour
         {
             //elapsedTime = 0.0f;
         }
-        enabled = true;
+        //enabled = true;
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created

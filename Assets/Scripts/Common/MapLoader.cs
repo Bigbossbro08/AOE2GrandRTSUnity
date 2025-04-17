@@ -129,6 +129,11 @@ public class MapLoader : MonoBehaviour
         // Deserialize GameState (the SaveLoadData converter will be used automatically)
         GameState state = JsonConvert.DeserializeObject<GameState>(json, settings);
 
+        DeterministicUpdateManager.Instance.tickCount = state.currentFrame;
+        DeterministicUpdateManager.Instance.seed = state.randomSeed;
+        UnitManager.counter = state.unitCounter;
+        UnitManager.crowdIDCounter = state.crowdIDCounter;
+
         foreach (var unitData in state.units)
         {
             switch (unitData.type)

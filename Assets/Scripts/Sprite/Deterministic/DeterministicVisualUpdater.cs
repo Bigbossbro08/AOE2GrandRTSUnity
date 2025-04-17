@@ -37,7 +37,7 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
     {
         if (!resume)
         {
-            elapsedFixedTime = 0;
+            StopOrPause(true);
         }
         enabled = true;
         OnPlayOrResumeEvent?.Invoke(resume);

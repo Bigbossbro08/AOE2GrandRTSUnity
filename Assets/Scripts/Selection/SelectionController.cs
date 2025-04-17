@@ -16,6 +16,7 @@ public class MoveUnitCommand : InputCommand {
         {
             ulong newCrowdID = ++UnitManager.crowdIDCounter;
             MovableUnit movableUnit = (MovableUnit)unit;
+            movableUnit.ResetUnit();
             movableUnit.movementComponent.StartPathfind(position);
             movableUnit.movementComponent.crowdID = newCrowdID;
         }
@@ -61,6 +62,7 @@ public class MoveUnitsCommand : InputCommand
                 Vector3 unitTarget = position + gridCenterOffset + offset;
 
                 MovableUnit movableUnit = (MovableUnit)unit;
+                movableUnit.ResetUnit();
                 movableUnit.movementComponent.StartPathfind(unitTarget);
                 movableUnit.movementComponent.crowdID = newCrowdID;
             }
@@ -102,6 +104,30 @@ public class MoveShipToDockCommand : InputCommand
             DebugExtension.DebugWireSphere(targetToDock, Color.cyan, 0.1f, 5.0f);
             shipUnit.DockAt(position, targetToDock);
             // shipUnit.StartPathfind(position);
+        }
+    }
+}
+
+public class AttackUnitCommand : InputCommand
+{
+    public const string commandName = "Attack Unit Command";
+    public ulong unitID;
+    public ulong targetID;
+
+    public void Execute()
+    {
+        Unit unit = UnitManager.Instance.GetUnit(unitID);
+        Unit targetUnit = UnitManager.Instance.GetUnit(targetID);
+        if (unit && targetUnit)
+        {
+            MovableUnit movableUnit = (MovableUnit)unit;
+            MovableUnit movableTargetUnit = (MovableUnit)targetUnit;
+            if (movableUnit.basicAttackAIModule)
+            {
+                movableUnit.ResetUnit();
+                movableUnit.basicAttackAIModule.InitializeAI(movableUnit, movableTargetUnit);
+                Debug.Log("Executing attack");
+            }
         }
     }
 }
@@ -286,6 +312,31 @@ public class SelectionController : MonoBehaviour
         return null;
     }
 
+    bool IsTargetingUnit(RaycastHit hit)
+    {
+        bool cmp1 = hit.transform.parent && hit.transform.parent.parent && hit.transform.parent.parent.CompareTag("Military Unit");
+        bool cmp2 = hit.collider.CompareTag("Military Unit");
+        if (cmp1 || cmp2)
+        {
+            return true;
+        }
+        return false;
+    }
+
+    MovableUnit GetMovableUnitFromHit(RaycastHit hit)
+    {
+        bool cmp1 = hit.transform.parent && hit.transform.parent.parent && hit.transform.parent.parent.CompareTag("Military Unit");
+        if (cmp1) {
+            return hit.transform.parent.parent.GetComponent<MovableUnit>();
+        }
+        bool cmp2 = hit.collider.CompareTag("Military Unit");
+        if (cmp2)
+        {
+            return hit.collider.GetComponent<MovableUnit>();
+        }
+        return null;
+    }
+
     void HandleCommandInput()
     {
         
@@ -372,11 +423,23 @@ public class SelectionController : MonoBehaviour
                         InputManager.Instance.SendInputCommand(moveUnitsCommand);
                     } else if (ids.Count == 1)
                     {
-                        MoveUnitCommand moveUnitCommand = new MoveUnitCommand();
-                        moveUnitCommand.action = MoveUnitCommand.commandName;
-                        moveUnitCommand.unitID = ids[0];
-                        moveUnitCommand.position = hit.point;
-                        InputManager.Instance.SendInputCommand(moveUnitCommand);
+                        if (IsTargetingUnit(hit))
+                        {
+                            MovableUnit targetMovableUnit = GetMovableUnitFromHit(hit);
+                            AttackUnitCommand attackUnitCommand = new AttackUnitCommand();
+                            attackUnitCommand.action = AttackUnitCommand.commandName;
+                            attackUnitCommand.unitID = ids[0];
+                            attackUnitCommand.targetID = targetMovableUnit.id;
+                            InputManager.Instance.SendInputCommand(attackUnitCommand);
+                        }
+                        else
+                        {
+                            MoveUnitCommand moveUnitCommand = new MoveUnitCommand();
+                            moveUnitCommand.action = MoveUnitCommand.commandName;
+                            moveUnitCommand.unitID = ids[0];
+                            moveUnitCommand.position = hit.point;
+                            InputManager.Instance.SendInputCommand(moveUnitCommand);
+                        }
                     }
                 }
                 DebugExtension.DebugWireSphere(hit.point, Color.cyan, 0.1f, 5.0f);

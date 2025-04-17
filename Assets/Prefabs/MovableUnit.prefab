@@ -184,6 +184,7 @@ GameObject:
   - component: {fileID: 9152001189729917415}
   - component: {fileID: 6778813792287557513}
   - component: {fileID: 1962381057880631117}
+  - component: {fileID: 1853550513862272935}
   m_Layer: 6
   m_Name: MovableUnit
   m_TagString: Military Unit
@@ -222,7 +223,10 @@ MonoBehaviour:
   id: 0
   unitDataName: military_units\swordsman
   movementComponent: {fileID: 9152001189729917415}
+  combatComponent: {fileID: 1853550513862272935}
   DeterministicVisualUpdater: {fileID: 1962381057880631117}
+  standSprite: idle_archer
+  walkSprite: move_archer
 --- !u!114 &9152001189729917415
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -277,3 +281,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   isLooping: 1
   duration: 1
+--- !u!114 &1853550513862272935
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5063327841519701295}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 35b729a844bed5444a353d486ddcbcee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  movableUnit: {fileID: 2808056200127217721}
+  spriteName: attacking
