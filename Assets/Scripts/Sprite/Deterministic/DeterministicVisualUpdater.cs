@@ -20,6 +20,7 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
     public string spriteName { get; private set; }
     public bool isLooping = true;
     public float duration = 1.0f;
+    public ulong playerId = 0;
 
     public delegate void OnPlayOrResumeDelegate(bool resume);
     public event OnPlayOrResumeDelegate OnPlayOrResumeEvent;
@@ -32,6 +33,9 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
 
     public delegate void OnLoadDelegate();
     public event OnLoadDelegate OnLoadEvent;
+
+    public delegate void OnRefreshDelegate();
+    public event OnRefreshDelegate OnRefreshEvent;
 
     public void PlayOrResume(bool resume)
     {
@@ -119,6 +123,11 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
         duration = deterministicVisualUpdaterData.duration;
         spriteName = deterministicVisualUpdaterData.spriteName;
         OnSetSpriteNameEvent?.Invoke(spriteName);
+    }
+
+    public void RefreshVisuals()
+    {
+        OnRefreshEvent?.Invoke();
     }
 
     public void PostLoad(SaveLoadData data)

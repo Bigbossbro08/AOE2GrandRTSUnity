@@ -72,6 +72,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     
     int conditionToBlockBoids = 0;
     int conditionToActivateRaycast = 0;
+    List<ulong> idsToIgnore = new List<ulong>();
 
     List<Vector3> positions = new List<Vector3>();
 
@@ -240,6 +241,17 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
                     }
                     if (obj.CompareTag("Ship Unit"))
                         continue;
+                    bool ignore = false;
+                    foreach (var id in idsToIgnore)
+                    {
+                        Unit u = UnitManager.Instance.GetUnit(id);
+                        if (nearbyObjs.Contains(u))
+                        {
+                            ignore = true;
+                            break;
+                        }
+                    }
+                    if (ignore) { continue; }
                     Vector2 obj2Dpos = new Vector2(obj.transform.localPosition.x, obj.transform.localPosition.z);
                     direction += (transform2Dpos - obj2Dpos).normalized;
                 }
@@ -249,7 +261,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             if (direction != Vector2.zero && canChangePosition)
             {
                 Vector2 newBoidsPosition = transform2Dpos + direction;
-                if (NavMesh.SamplePosition(newBoidsPosition, out NavMeshHit hit, isUsingRaycast ? 20f : 0.5f, GetAreaMask()))
+                if (NavMesh.SamplePosition(new Vector3(newBoidsPosition.x, transform.position.y, newBoidsPosition.y), out NavMeshHit hit, isUsingRaycast ? 20f : 0.5f, GetAreaMask()))
                 {
                     newPosition2D = new Vector2(hit.position.x, hit.position.z);
                     if (!isUsingRaycast)
@@ -287,6 +299,15 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
         // TODO: Add proper cleanup of timer
         DeterministicUpdateManager.Instance.timer.AddTimer(0, action);
+    }
+
+    public void SetTargetToIgnore(ulong? id = null)
+    {
+        idsToIgnore.Clear();
+        if (id != null)
+        {
+            idsToIgnore.Add(id.Value);
+        }
     }
 
     public float GetRotationSpeed()
@@ -341,6 +362,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     private void OnDisable()
     {
         DeterministicUpdateManager.Instance.Unregister(this);
+        movementState = State.Idle;
     }
 
     // Helper function to get the nearest point on the NavMesh

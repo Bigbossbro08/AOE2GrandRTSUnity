@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using static PathfinderTest;
 using static Unit;
+using static UnityEngine.GraphicsBuffer;
 
 [RequireComponent(typeof(MovementComponent))]
 public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
@@ -16,11 +17,10 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         public MovableUnitData() { type = "MovableUnitData"; }
     }
 
-    // TEMP
-    public BasicAttackAIModule basicAttackAIModule;
-
     public MovementComponent movementComponent;
-    public ActionComponent combatComponent;
+    public ActionComponent actionComponent;
+
+    public UnitAIModule aiModule;
 
     [SerializeField] DeterministicVisualUpdater DeterministicVisualUpdater;
 
@@ -58,9 +58,10 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         gameObject.tag = "Military Unit";
         standSprite = militaryUnit.standing;
         walkSprite = militaryUnit.walking;
-        if (combatComponent)
+        
+        if (actionComponent)
         {
-            combatComponent.SetActionSprite(militaryUnit.attacking);
+            actionComponent.SetActionSprite(militaryUnit.attacking);
         }
 
         if (callVisualUpdate) {
@@ -70,9 +71,16 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 {
                     DeterministicVisualUpdater.SetSpriteName(standSprite, true);
                     DeterministicVisualUpdater.PlayOrResume(true);
+                    DeterministicVisualUpdater.playerId = playerId;
+                    DeterministicVisualUpdater.RefreshVisuals();
                 }
             };
 
+            if (aiModule && aiModule.GetType() == typeof(BasicAttackAIModule))
+            {
+                BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
+                basicAttackAIModule.InitializeAI(this, null, true);
+            }
             DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
         }
     }
@@ -82,14 +90,15 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         if (movementComponent)
         {
             movementComponent.Stop();
+            movementComponent.SetTargetToIgnore(null);
         }
-        if (combatComponent)
+        if (actionComponent)
         {
-            combatComponent.StopAction();
+            actionComponent.StopAction();
         }
-        if (basicAttackAIModule)
+        if (aiModule)
         {
-            basicAttackAIModule.enabled = false;
+            //aiModule.enabled = false;
         }
     }
 
@@ -124,7 +133,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
     {
         if (movementComponent.movementState == MovementComponent.State.Moving &&
             DeterministicVisualUpdater.spriteName != walkSprite &&
-            !combatComponent.IsPlayingAction())
+            !actionComponent.IsPlayingAction())
         {
             DeterministicVisualUpdater.SetSpriteName(walkSprite, true);
         }
@@ -137,7 +146,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         {
             string sprite = standSprite;
             if (actionBlock > 0)
-                sprite = combatComponent.spriteName;
+                sprite = actionComponent.spriteName;
             DeterministicVisualUpdater.SetSpriteName(standSprite, true);
             DeterministicVisualUpdater.PlayOrResume(false);
         }

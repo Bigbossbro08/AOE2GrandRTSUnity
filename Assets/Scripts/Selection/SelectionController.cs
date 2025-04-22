@@ -122,11 +122,17 @@ public class AttackUnitCommand : InputCommand
         {
             MovableUnit movableUnit = (MovableUnit)unit;
             MovableUnit movableTargetUnit = (MovableUnit)targetUnit;
-            if (movableUnit.basicAttackAIModule)
+            if (movableUnit.aiModule)
             {
-                movableUnit.ResetUnit();
-                movableUnit.basicAttackAIModule.InitializeAI(movableUnit, movableTargetUnit);
-                Debug.Log("Executing attack");
+                BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)movableUnit.aiModule;
+                if (basicAttackAIModule)
+                {
+                    movableUnit.ResetUnit();
+                    basicAttackAIModule.InitializeAI(movableUnit, movableTargetUnit);
+                    ulong newCrowdID = ++UnitManager.crowdIDCounter;
+                    movableUnit.movementComponent.crowdID = newCrowdID;
+                    Debug.Log("Executing attack");
+                }
             }
         }
     }
@@ -312,12 +318,14 @@ public class SelectionController : MonoBehaviour
         return null;
     }
 
-    bool IsTargetingUnit(RaycastHit hit)
+    bool IsTargetingUnit(RaycastHit hit, out MovableUnit unit)
     {
+        unit = null;
         bool cmp1 = hit.transform.parent && hit.transform.parent.parent && hit.transform.parent.parent.CompareTag("Military Unit");
         bool cmp2 = hit.collider.CompareTag("Military Unit");
         if (cmp1 || cmp2)
         {
+            unit = GetMovableUnitFromHit(hit);
             return true;
         }
         return false;
@@ -423,9 +431,8 @@ public class SelectionController : MonoBehaviour
                         InputManager.Instance.SendInputCommand(moveUnitsCommand);
                     } else if (ids.Count == 1)
                     {
-                        if (IsTargetingUnit(hit))
+                        if (IsTargetingUnit(hit, out MovableUnit targetMovableUnit))
                         {
-                            MovableUnit targetMovableUnit = GetMovableUnitFromHit(hit);
                             AttackUnitCommand attackUnitCommand = new AttackUnitCommand();
                             attackUnitCommand.action = AttackUnitCommand.commandName;
                             attackUnitCommand.unitID = ids[0];

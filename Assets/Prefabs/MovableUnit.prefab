@@ -32,6 +32,82 @@ Transform:
   - {fileID: 7355790755569040782}
   m_Father: {fileID: 1423741141054936895}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1079907806626746562
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9174888504552720271}
+  m_Layer: 6
+  m_Name: Types
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9174888504552720271
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1079907806626746562}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 866024625791910079}
+  m_Father: {fileID: 1423741141054936895}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2120004541414238474
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 866024625791910079}
+  - component: {fileID: 5196839320851393636}
+  m_Layer: 6
+  m_Name: MilitaryUnit
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &866024625791910079
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120004541414238474}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 9174888504552720271}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5196839320851393636
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2120004541414238474}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 486af711fef5c7b4db4120039d2f2ab5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2231154300002693302
 GameObject:
   m_ObjectHideFlags: 0
@@ -206,6 +282,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3860204706865065482}
+  - {fileID: 9174888504552720271}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2808056200127217721
@@ -220,10 +297,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 720e7064a5f4c43408f6d461d0bb182f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerId: 1
   id: 0
   unitDataName: military_units\swordsman
   movementComponent: {fileID: 9152001189729917415}
   combatComponent: {fileID: 1853550513862272935}
+  aiModule: {fileID: 5196839320851393636}
   DeterministicVisualUpdater: {fileID: 1962381057880631117}
   standSprite: idle_archer
   walkSprite: move_archer
@@ -242,6 +321,7 @@ MonoBehaviour:
   radius: 0.14
   movementSpeed: 0.92
   rotationSpeed: 5
+  movementState: 0
   flags: 17
   crowdID: 0
 --- !u!136 &6778813792287557513
@@ -281,6 +361,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   isLooping: 1
   duration: 1
+  playerId: 0
 --- !u!114 &1853550513862272935
 MonoBehaviour:
   m_ObjectHideFlags: 0

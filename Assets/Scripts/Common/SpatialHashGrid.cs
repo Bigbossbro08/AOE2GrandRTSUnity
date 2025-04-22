@@ -61,9 +61,10 @@ public class SpatialHashGrid : MonoBehaviour {
     {
         List<Unit> found = new List<Unit>();
         Vector2Int objectIndex = GetCell(position);
-        for (int i = -1; i < 1; i++)
+        int lookRange = (int)radius + 1;
+        for (int i = -lookRange; i < lookRange; i++)
         {
-            for (int j = -1; j < 1; j++)
+            for (int j = -lookRange; j < lookRange; j++)
             {
                 Vector2Int cell = new Vector2Int(objectIndex.x + i, objectIndex.y + j);
                 if (grid.TryGetValue(cell, out HashSet<Unit> cellObjs))

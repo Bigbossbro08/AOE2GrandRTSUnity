@@ -19,6 +19,8 @@ public class Unit : MonoBehaviour, MapLoader.IMapSaveLoad
         public UnitData() { type = "UnitData"; }
     }
 
+    public ulong playerId = 0; // By default nature player
+
     public ulong id = 0;
 
     public string unitDataName = "military_units\\archer";

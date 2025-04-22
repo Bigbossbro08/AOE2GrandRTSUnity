@@ -10,7 +10,13 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
         } else
         {
             StopAction();
+            OnEndAction();
         }
+    }
+
+    public virtual void OnEndAction()
+    {
+
     }
 
     public void StopAction()

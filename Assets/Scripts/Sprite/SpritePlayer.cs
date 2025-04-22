@@ -86,6 +86,7 @@ public class SpritePlayer : MonoBehaviour
         deterministicVisualUpdater.OnStopOrPauseEvent += DeterministicVisualUpdater_OnStopOrPauseEvent;
         deterministicVisualUpdater.OnSetSpriteNameEvent += DeterministicVisualUpdater_OnSetSpriteNameEvent;
         deterministicVisualUpdater.OnLoadEvent += DeterministicVisualUpdater_OnLoadEvent;
+        deterministicVisualUpdater.OnRefreshEvent += DeterministicVisualUpdater_OnRefreshEvent;
     }
 
     private void DeterministicVisualUpdater_OnLoadEvent()
@@ -99,12 +100,27 @@ public class SpritePlayer : MonoBehaviour
         ValidateSprites(true);
     }
 
+    private void DeterministicVisualUpdater_OnRefreshEvent()
+    {
+        PlayerData playerData = UnitManager.Instance.GetPlayerData(deterministicVisualUpdater.playerId);
+        if (playerData != null)
+        {
+            MaterialPropertyBlock block = new MaterialPropertyBlock();
+            spriteRenderer.GetPropertyBlock(block);
+            playerColor = playerData.color;
+            Debug.Log("UPDATED PLAYER COLOR");
+            block.SetColor("_HighlightColor", playerColor);
+            spriteRenderer.SetPropertyBlock(block);
+        }
+    }
+
     private void OnDisable()
     {
         deterministicVisualUpdater.OnPlayOrResumeEvent -= DeterministicVisualUpdater_OnPlayOrResumeEvent;
         deterministicVisualUpdater.OnStopOrPauseEvent -= DeterministicVisualUpdater_OnStopOrPauseEvent;
         deterministicVisualUpdater.OnSetSpriteNameEvent -= DeterministicVisualUpdater_OnSetSpriteNameEvent;
         deterministicVisualUpdater.OnLoadEvent -= DeterministicVisualUpdater_OnLoadEvent;
+        deterministicVisualUpdater.OnRefreshEvent -= DeterministicVisualUpdater_OnRefreshEvent;
     }
 
     static int PredictCurrentFrameFromDuration(float elapsedTime, float duration, int frameCount)

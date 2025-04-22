@@ -5,6 +5,18 @@ using UnityEngine;
 using UnityEngine.Pool;
 using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
 
+public class PlayerData
+{
+    public ulong id;
+    public Color color;
+
+    public PlayerData(ulong id, Color color)
+    {
+        this.id = id;
+        this.color = color;
+    }
+}
+
 [RequireComponent(typeof(SpatialHashGrid))]
 public class UnitManager : MonoBehaviour
 {
@@ -27,6 +39,7 @@ public class UnitManager : MonoBehaviour
     public ObjectPool<MovableUnit> movableUnitPool;
     public ObjectPool<ShipUnit> shipUnitPool;
 
+    Dictionary<ulong, PlayerData> players = new Dictionary<ulong, PlayerData>();
     Dictionary<ulong, Unit> units = new Dictionary<ulong, Unit>(5000);
 
     public MovableUnit movableUnitPrefab;
@@ -50,6 +63,17 @@ public class UnitManager : MonoBehaviour
 
         counter = 0;
         crowdIDCounter = 0;
+
+        //TODO: Make proper player data systerm
+        players.Add(0, new PlayerData(0, Color.white));
+        if (ColorUtility.TryParseHtmlString("#87CEEB", out Color playerOneColor))
+        {
+            players.Add(1, new PlayerData(1, playerOneColor));
+        }
+        if (ColorUtility.TryParseHtmlString("#780606", out Color playerTwoColor))
+        {
+            players.Add(2, new PlayerData(2, playerTwoColor));
+        }
     }
 
     private void Start()
@@ -168,6 +192,12 @@ public class UnitManager : MonoBehaviour
         {
             units.Remove(id);
         }
+    }
+
+    public PlayerData GetPlayerData(ulong id)
+    {
+        if (players.TryGetValue(id, out PlayerData playerData)) return playerData;
+        return null;
     }
 
     public MilitaryUnit LoadMilitaryUnit(string name)
