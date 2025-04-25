@@ -2,6 +2,11 @@ using UnityEngine;
 
 public class UnitAIModule : MonoBehaviour, IDeterministicUpdate, MapLoader.IMapSaveLoad
 {
+    public enum AIModule
+    {
+        BasicAttackAIModule
+    }
+
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
         //throw new System.NotImplementedException();

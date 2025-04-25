@@ -38,6 +38,7 @@ public class SpritePlayer : MonoBehaviour
             //elapsedTime = 0.0f;
         }
         //enabled = true;
+        DeterministicVisualUpdater_OnRefreshEvent();
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -82,6 +83,7 @@ public class SpritePlayer : MonoBehaviour
 
     private void OnEnable()
     {
+        deterministicVisualUpdater.RefreshVisuals();
         deterministicVisualUpdater.OnPlayOrResumeEvent += DeterministicVisualUpdater_OnPlayOrResumeEvent;
         deterministicVisualUpdater.OnStopOrPauseEvent += DeterministicVisualUpdater_OnStopOrPauseEvent;
         deterministicVisualUpdater.OnSetSpriteNameEvent += DeterministicVisualUpdater_OnSetSpriteNameEvent;
@@ -108,9 +110,19 @@ public class SpritePlayer : MonoBehaviour
             MaterialPropertyBlock block = new MaterialPropertyBlock();
             spriteRenderer.GetPropertyBlock(block);
             playerColor = playerData.color;
-            Debug.Log("UPDATED PLAYER COLOR");
             block.SetColor("_HighlightColor", playerColor);
             spriteRenderer.SetPropertyBlock(block);
+
+            int frameCount = spriteFrames.Count;
+            // Calculate looping frame index
+            int newFrame = Mathf.FloorToInt((deterministicVisualUpdater.elapsedFixedTime / deterministicVisualUpdater.duration) * frameCount) % frameCount;
+
+            if (spriteFrames[newFrame])
+            {
+                spriteRenderer.sprite = spriteFrames[newFrame];
+            }
+            isMirrored = OpenageSpriteLoader.CanBeMirrored(mainTransform.eulerAngles.y);
+            spriteRenderer.flipX = isMirrored;
         }
     }
 

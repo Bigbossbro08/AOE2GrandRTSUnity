@@ -9,15 +9,17 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
             currentTime += deltaTime;
         } else
         {
-            StopAction();
             OnEndAction();
+            StopAction();
         }
     }
 
-    public virtual void OnEndAction()
+    public void OnEndAction()
     {
-
+        UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnActionEnd, endActionType, movableUnit.id);
     }
+
+    public float GetCurrentTime() { return currentTime; }
 
     public void StopAction()
     {
@@ -30,6 +32,11 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
             string sprite = movableUnit.standSprite;
             if (movableUnit.movementComponent.movementState == MovementComponent.State.Moving)
                 sprite = movableUnit.walkSprite;
+            if (endActionType == "DeathEndAction")
+            {
+                Debug.Log($"On post anim is: {sprite}");
+            }
+
             deterministicVisualUpdater.SetSpriteName(sprite, true);
             deterministicVisualUpdater.PlayOrResume(false);
             movableUnit.DecrementActionBlock();
@@ -68,15 +75,17 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
     public string spriteName = "attacking";
     float currentTime = 0.0f;
     float duration = 1.0f;
+    public string endActionType = "";
 
     private void Awake()
     {
         enabled = false;
     }
 
-    public void SetActionSprite(string spriteName)
+    public void SetActionSprite(string spriteName, string endActionType = "")
     {
         this.spriteName = spriteName;
+        this.endActionType = endActionType;
     }
 
     public bool IsPlayingAction()

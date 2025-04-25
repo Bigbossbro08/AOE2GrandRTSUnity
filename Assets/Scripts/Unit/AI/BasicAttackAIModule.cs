@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -37,11 +38,11 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     float lookupTimer = 0;
     const float lookupTimerLength = 1.0f;
 
-    const float thresholdForAttackState = 0.14f * 2;
-    const float thresholdForAttackStateSqr = thresholdForAttackState * 1.1f * thresholdForAttackState * 1.1f;
+    const float thresholdForAttackState = (0.14f + 0.05f);
+    const float thresholdForAttackStateSqr = thresholdForAttackState * thresholdForAttackState;
 
-    const float thresholdForMovingState = (0.14f + 0.05f) * 2;
-    const float thresholdForMovingStateSqr = thresholdForMovingState * thresholdForMovingState;
+    //const float thresholdForMovingState = (0.14f + 0.05f) * 2;
+    //const float thresholdForMovingStateSqr = thresholdForMovingState * thresholdForMovingState;
 
     const float thresholdForTarget = (float)(0.14 * DeterministicUpdateManager.FixedStep);
     const float thresholdForTargetSqr = thresholdForTarget * thresholdForTarget;
@@ -50,7 +51,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     bool IsUpdateable()
     {
-        return self;
+        return StatComponent.IsUnitAliveOrValid(self);
     }
 
     void ProcessLookForTarget()
@@ -69,6 +70,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 if (unit == self) continue;
                 if (unit.playerId == self.playerId) continue;
                 if (unit.GetType() != typeof(MovableUnit)) continue;
+                if (!StatComponent.IsUnitAliveOrValid((MovableUnit)unit)) continue;
 
                 float sqrDistance = (self.transform.position - unit.transform.position).sqrMagnitude;
                 unitHeap.Push(new HeapUnitNode(i, sqrDistance));
@@ -99,9 +101,21 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     Vector3 GetPositionCloseToTarget()
     {
         Vector3 diff = targetPosition - self.transform.position;
+        float distanceSqr = diff.sqrMagnitude;
         diff = diff.normalized;
-        diff *= thresholdForAttackState * .99f;
-        return diff;
+
+        float distance = thresholdForAttackState * .99f;
+        //float closeDistance = thresholdForAttackState * .99f;
+        //if (self.unitTypeComponent != null && self.unitTypeComponent.GetType() == typeof(CombatComponent))
+        //{
+        //    distance = Mathf.Sqrt(distanceSqr);
+        //    CombatComponent combatComponent = self.unitTypeComponent as CombatComponent; 
+        //    distance = Mathf.Clamp(distance, closeDistance, combatComponent.attackRange);
+        //    Debug.Log($"{distance} {Mathf.Sqrt(distanceSqr)} {distanceSqr} {closeDistance} {combatComponent.attackRange}");
+        //}
+        distance = 0;
+        diff *= distance;
+        return targetPosition + diff;
     }
 
     void SetTarget(MovableUnit target, bool updateTargetPosition = true)
@@ -117,6 +131,26 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         }
     }
 
+    bool IsTargetWithinRange(bool useThreshold = false)
+    {
+        float cmpSqr = thresholdForAttackStateSqr;
+        if (self.unitTypeComponent != null && self.unitTypeComponent.GetType() == typeof(CombatComponent))
+        {
+            CombatComponent combatComponent = self.unitTypeComponent as CombatComponent;
+            cmpSqr = combatComponent.attackRange * 1.1f;
+            cmpSqr *= cmpSqr;
+        }
+        if (cmpSqr < thresholdForAttackStateSqr || cmpSqr == 0)
+        {
+            cmpSqr = thresholdForAttackStateSqr;
+        }
+        if ((target.transform.position - self.transform.position).sqrMagnitude < cmpSqr)
+        {
+            return true;
+        }
+        return false;
+    }
+
     void ChangeState(State newState)
     {
         // Used for cleaning up
@@ -124,6 +158,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         {
             case State.LookingForTarget:
                 {
+                    target = null;
                     self.ResetUnit();
                     ulong newCrowdID = ++UnitManager.crowdIDCounter;
                     self.movementComponent.crowdID = newCrowdID;
@@ -134,11 +169,12 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                     //SetTarget(target);
                     self.movementComponent.SetTargetToIgnore(target.id);
                     targetPosition = target.transform.position;
-                    self.movementComponent.StartPathfind(targetPosition + GetPositionCloseToTarget(), true);
+                    self.movementComponent.StartPathfind(GetPositionCloseToTarget(), true);
                 }
                 break;
             case State.AttackTarget:
                 {
+                    self.movementComponent.Stop();
                 }
                 break;
             default:
@@ -149,13 +185,14 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     void State_MoveTowardsTarget()
     {
-        if (!target)
+        if (!StatComponent.IsUnitAliveOrValid(target))
         {
             ChangeState(State.LookingForTarget);
             return;
         }
 
-        if ((target.transform.position - self.transform.position).sqrMagnitude < thresholdForAttackStateSqr)
+        //if ((target.transform.position - self.transform.position).sqrMagnitude < thresholdForAttackStateSqr)
+        if (IsTargetWithinRange())
         {
             ChangeState(State.AttackTarget);
             return;
@@ -171,7 +208,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         if (diff.sqrMagnitude > thresholdForTargetSqr)
         {
             targetPosition = newTargetPosition;
-            self.movementComponent.StartPathfind(newTargetPosition + GetPositionCloseToTarget(), true);
+            self.movementComponent.StartPathfind(GetPositionCloseToTarget(), true);
         }
 
         //self.combatComponent.StartAction();
@@ -179,14 +216,15 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     void State_AttackTarget()
     {
-        if (!target)
+        if (!StatComponent.IsUnitAliveOrValid(target))
         {
             ChangeState(State.LookingForTarget);
             return;
         }
 
         Vector3 newTargetPosition = target.transform.position;
-        if ((newTargetPosition - self.transform.position).sqrMagnitude > thresholdForMovingStateSqr)
+        //if ((newTargetPosition - self.transform.position).sqrMagnitude > thresholdForMovingStateSqr)
+        if (!IsTargetWithinRange())
         {
             Vector3 diff = newTargetPosition - self.transform.position;
             ChangeState(State.MoveTowardsTarget);
@@ -203,8 +241,9 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 self.transform.eulerAngles = new Vector3(0, yAngle, 0);
             }
             self.movementComponent.Stop();
+            self.actionComponent.StartAction();
+            UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnAttack, self.id, target.id, 6.0f);
         }
-        self.actionComponent.StartAction();
     }
 
     public new void DeterministicUpdate(float deltaTime, ulong tickID)

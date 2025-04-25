@@ -38,12 +38,14 @@ public class UnitManager : MonoBehaviour
 
     public ObjectPool<MovableUnit> movableUnitPool;
     public ObjectPool<ShipUnit> shipUnitPool;
+    public ObjectPool<DeadUnit> deadUnitPool;
 
     Dictionary<ulong, PlayerData> players = new Dictionary<ulong, PlayerData>();
     Dictionary<ulong, Unit> units = new Dictionary<ulong, Unit>(5000);
 
     public MovableUnit movableUnitPrefab;
     public ShipUnit shipUnitPrefab;
+    public DeadUnit deadUnitPrefab;
 
     public string dataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\data";
 
@@ -80,6 +82,36 @@ public class UnitManager : MonoBehaviour
     {
         movableUnitPool = new ObjectPool<MovableUnit>(SpawnMovableUnit, GetMovableUnitfromPool, ReleaseMovableUnitfromPool, DestroyMovableUnitfromPool, false, 200, 5000);
         shipUnitPool = new ObjectPool<ShipUnit>(SpawnShipUnit, GetShipUnitFromPool, ReleaseShipUnitFromPool, DestroyShipUnitFromPool);
+        deadUnitPool = new ObjectPool<DeadUnit>(SpawnDeadUnit, GetDeadUnitFromPool, ReleaseDeadUnitFromPool, DestroyDeadUnitFromPool);
+    }
+
+    private DeadUnit SpawnDeadUnit()
+    {
+        DeadUnit deadUnit = Instantiate(deadUnitPrefab);
+        return deadUnit;
+    }
+
+    private void GetDeadUnitFromPool(DeadUnit unit)
+    {
+        unit.gameObject.SetActive(true);
+    }
+
+    private void ReleaseDeadUnitFromPool(DeadUnit unit)
+    {
+        if (units.ContainsKey(unit.id))
+        {
+            units.Remove(unit.id);
+        }
+        unit.gameObject.SetActive(false);
+    }
+
+    private void DestroyDeadUnitFromPool(DeadUnit unit)
+    {
+        if (units.ContainsKey(unit.id))
+        {
+            units.Remove(unit.id);
+        }
+        Destroy(unit);
     }
 
     #region Ship
@@ -145,6 +177,7 @@ public class UnitManager : MonoBehaviour
     }
     #endregion
 
+    #region BasicUnit
     public ulong Register(Unit unit)
     {
         ulong id = counter++;
@@ -193,6 +226,7 @@ public class UnitManager : MonoBehaviour
             units.Remove(id);
         }
     }
+    #endregion
 
     public PlayerData GetPlayerData(ulong id)
     {

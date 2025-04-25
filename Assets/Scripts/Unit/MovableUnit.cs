@@ -17,10 +17,14 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         public MovableUnitData() { type = "MovableUnitData"; }
     }
 
+    public StatComponent statComponent;
     public MovementComponent movementComponent;
     public ActionComponent actionComponent;
 
+    public UnitTypeComponent unitTypeComponent;
     public UnitAIModule aiModule;
+
+    public Transform aiTransformHolder;
 
     [SerializeField] DeterministicVisualUpdater DeterministicVisualUpdater;
 
@@ -76,12 +80,27 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 }
             };
 
+            Transform BasicAttackAIModuleTransform = aiTransformHolder.Find("BasicAttackAIModule");
             if (aiModule && aiModule.GetType() == typeof(BasicAttackAIModule))
             {
                 BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
                 basicAttackAIModule.InitializeAI(this, null, true);
             }
             DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
+        }
+    }
+
+    // TODO: Ensure how to reset back to its own default state as well. Like movement AI should fall back to unit's native AI
+    public void ChangeAIModule(UnitAIModule.AIModule newModuleType)
+    {
+        // First clear up old AI Module
+        // Then add new AI Module
+        switch (newModuleType)
+        {
+            case UnitAIModule.AIModule.BasicAttackAIModule:
+                break;
+            default:
+                break;
         }
     }
 
@@ -98,7 +117,8 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         }
         if (aiModule)
         {
-            //aiModule.enabled = false;
+            if (!StatComponent.IsUnitAliveOrValid(this))
+                aiModule.enabled = false;
         }
     }
 
@@ -127,6 +147,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             movementComponent.OnStopMoving -= MovementComponent_OnStopMoving;
             movementComponent.OnMoving -= MovementComponent_OnMoving;
         }
+        UnitManager.Instance.spatialHashGrid.Unregister(this);
     }
 
     private void MovementComponent_OnMoving()

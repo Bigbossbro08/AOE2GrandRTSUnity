@@ -1,5 +1,51 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &187686550896793706
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3286516287298026727}
+  - component: {fileID: 6412636851807375680}
+  m_Layer: 6
+  m_Name: Combat
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3286516287298026727
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 187686550896793706}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2562446953781020308}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &6412636851807375680
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 187686550896793706}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 728c89c358c687642b30ba0eb07142f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  attackRange: 0
+  stance: 0
 --- !u!1 &811680468571621435
 GameObject:
   m_ObjectHideFlags: 0
@@ -42,7 +88,7 @@ GameObject:
   m_Component:
   - component: {fileID: 9174888504552720271}
   m_Layer: 6
-  m_Name: Types
+  m_Name: AI
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -75,7 +121,7 @@ GameObject:
   - component: {fileID: 866024625791910079}
   - component: {fileID: 5196839320851393636}
   m_Layer: 6
-  m_Name: MilitaryUnit
+  m_Name: BasicAttackAIModule
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -261,6 +307,7 @@ GameObject:
   - component: {fileID: 6778813792287557513}
   - component: {fileID: 1962381057880631117}
   - component: {fileID: 1853550513862272935}
+  - component: {fileID: 3022484260400165635}
   m_Layer: 6
   m_Name: MovableUnit
   m_TagString: Military Unit
@@ -283,6 +330,7 @@ Transform:
   m_Children:
   - {fileID: 3860204706865065482}
   - {fileID: 9174888504552720271}
+  - {fileID: 2562446953781020308}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &2808056200127217721
@@ -300,9 +348,12 @@ MonoBehaviour:
   playerId: 1
   id: 0
   unitDataName: military_units\swordsman
+  statComponent: {fileID: 3022484260400165635}
   movementComponent: {fileID: 9152001189729917415}
-  combatComponent: {fileID: 1853550513862272935}
+  actionComponent: {fileID: 1853550513862272935}
+  unitTypeComponent: {fileID: 6412636851807375680}
   aiModule: {fileID: 5196839320851393636}
+  aiTransformHolder: {fileID: 9174888504552720271}
   DeterministicVisualUpdater: {fileID: 1962381057880631117}
   standSprite: idle_archer
   walkSprite: move_archer
@@ -376,3 +427,47 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   movableUnit: {fileID: 2808056200127217721}
   spriteName: attacking
+--- !u!114 &3022484260400165635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5063327841519701295}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6df8980fbe0415d46a77bdd9cdfe0dd6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!1 &7493640642173522687
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2562446953781020308}
+  m_Layer: 6
+  m_Name: Type
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2562446953781020308
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7493640642173522687}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3286516287298026727}
+  m_Father: {fileID: 1423741141054936895}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
