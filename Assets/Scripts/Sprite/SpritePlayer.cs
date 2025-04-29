@@ -22,6 +22,8 @@ public class SpritePlayer : MonoBehaviour
 
     [SerializeField] Color playerColor = Color.red;
 
+    [SerializeField] int currentFrame = 0;
+
     private void DeterministicVisualUpdater_OnStopOrPauseEvent(bool stop)
     {
         if (stop)
@@ -29,6 +31,7 @@ public class SpritePlayer : MonoBehaviour
             //elapsedTime = 0.0f;
         }
         //enabled = false;
+        //DeterministicVisualUpdater_OnRefreshEvent();
     }
 
     private void DeterministicVisualUpdater_OnPlayOrResumeEvent(bool resume)
@@ -113,9 +116,7 @@ public class SpritePlayer : MonoBehaviour
             block.SetColor("_HighlightColor", playerColor);
             spriteRenderer.SetPropertyBlock(block);
 
-            int frameCount = spriteFrames.Count;
-            // Calculate looping frame index
-            int newFrame = Mathf.FloorToInt((deterministicVisualUpdater.elapsedFixedTime / deterministicVisualUpdater.duration) * frameCount) % frameCount;
+            int newFrame = GetFrame();
 
             if (spriteFrames[newFrame])
             {
@@ -135,10 +136,45 @@ public class SpritePlayer : MonoBehaviour
         deterministicVisualUpdater.OnRefreshEvent -= DeterministicVisualUpdater_OnRefreshEvent;
     }
 
-    static int PredictCurrentFrameFromDuration(float elapsedTime, float duration, int frameCount)
+    //int GetFrame()
+    //{
+    //    int frameCount = spriteFrames.Count;
+    //
+    //    float elapsedTime = deterministicVisualUpdater.elapsedFixedTime;
+    //    float duration = deterministicVisualUpdater.duration;
+    //
+    //    // Calculate looping frame index
+    //    int newFrame = Mathf.FloorToInt((elapsedTime / duration) * frameCount) % frameCount;
+    //
+    //    if (elapsedTime == duration && newFrame == 0)
+    //    {
+    //        Debug.LogAssertion($"Error in calculation. Values are frameCount:{frameCount} elapsedTime:{elapsedTime} duration:{duration} newFrame:{newFrame}");
+    //    }
+    //    return newFrame;
+    //}
+
+    int GetFrame()
     {
-        // Calculate looping frame index
-        int newFrame = Mathf.FloorToInt((elapsedTime / duration) * frameCount) % frameCount;
+        int frameCount = spriteFrames.Count;
+        float elapsedTime = deterministicVisualUpdater.elapsedFixedTime;
+        float duration = deterministicVisualUpdater.duration;
+
+        // Handle edge case where elapsedTime equals/exceeds duration
+        float adjustedTime = elapsedTime - 1e-6f; // Tiny epsilon to prevent wrap-around
+
+        // Calculate frame index
+        int newFrame = Mathf.FloorToInt((adjustedTime / duration) * frameCount);
+
+        // Loop the animation and clamp to valid frames
+        newFrame = newFrame % frameCount;
+        newFrame = Mathf.Clamp(newFrame, 0, frameCount - 1);
+        if (!deterministicVisualUpdater.isLooping && elapsedTime >= duration)
+        {
+            //Debug.Log($"Frame isn't looping but value changed back to 0 {newFrame < currentFrame}");
+            newFrame = frameCount - 1;
+        }
+        currentFrame = newFrame;
+
         return newFrame;
     }
 
@@ -148,10 +184,8 @@ public class SpritePlayer : MonoBehaviour
 
         if (spriteFrames.Count == 0) return;
 
-        int frameCount = spriteFrames.Count;
-
         // Calculate looping frame index
-        int newFrame = Mathf.FloorToInt((deterministicVisualUpdater.elapsedFixedTime / deterministicVisualUpdater.duration) * frameCount) % frameCount;
+        int newFrame = GetFrame();
 
         ValidateSprites();
         PlaySprites(newFrame, isMirrored);

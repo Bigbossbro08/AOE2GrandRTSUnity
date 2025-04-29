@@ -65,7 +65,13 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         
         if (actionComponent)
         {
-            actionComponent.SetActionSprite(militaryUnit.attacking);
+            List<ActionComponent.ActionEvent> actionEvents = new List<ActionComponent.ActionEvent>() { 
+                // ulong selfId = (ulong)obj[0];
+                // ulong targetId = (ulong)obj[1];
+                // float damage = (float)obj[2];
+                new ActionComponent.ActionEvent(1.0f, UnitEventHandler.EventID.OnAttack, new List<object>() { id, 0, 6.0f })
+            };
+            actionComponent.SetActionSprite(militaryUnit.attacking, "", actionEvents);
         }
 
         if (callVisualUpdate) {
@@ -114,6 +120,13 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         if (actionComponent)
         {
             actionComponent.StopAction();
+            foreach (var action in actionComponent.actions)
+            {
+                if (action.eventId == UnitEventHandler.EventID.OnAttack && action.parameters.Length == 3)
+                {
+                    action.parameters[1] = 0;
+                }
+            }
         }
         if (aiModule)
         {

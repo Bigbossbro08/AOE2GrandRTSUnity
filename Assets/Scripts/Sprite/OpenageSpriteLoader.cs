@@ -281,7 +281,7 @@ public class OpenageSpriteLoader : MonoBehaviour
     public string graphicsPath = "C:\\Users\\USER\\source\\repos\\openage\\assets\\converted\\graphics\\";
     public Dictionary<string, SpriteDataStorage> spriteDataStorageDict = new Dictionary<string, SpriteDataStorage>();
 
-    public string newGraphicsPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\converted\\hd_base\\data\\game_entity\\"; //"E:\\repos\\AOE2GrandRTSUnityFiles\\converted\\hd_base\\data\\game_entity\\";
+    //public string newGraphicsPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\converted\\hd_base\\data\\game_entity\\"; //"E:\\repos\\AOE2GrandRTSUnityFiles\\converted\\hd_base\\data\\game_entity\\";
     
     public Dictionary<string, NewSpriteDataStorage> newSpriteDataStorageDict = new Dictionary<string, NewSpriteDataStorage>();
 
@@ -299,7 +299,7 @@ public class OpenageSpriteLoader : MonoBehaviour
         {
             Instance = this;
         }
-        newGraphicsPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\converted\\hd_base\\data\\game_entity\\";
+        //newGraphicsPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\converted\\hd_base\\data\\game_entity\\";
     }
 
     public static int GetQuadrantIndex(float angle)
@@ -413,7 +413,7 @@ public class OpenageSpriteLoader : MonoBehaviour
         }
         
         //Debug.Log($"{newGraphicsPath} {spriteName}");
-        string spritePath = Path.Combine(newGraphicsPath, spriteName + ".sprite");
+        string spritePath = Path.Combine(MapLoader.GetDataPath(), spriteName + ".sprite");
         NewFormatLoader.SpriteData spriteData = NewFormatLoader.ParseSpriteFile(spritePath);
 
         string basePath = Path.GetDirectoryName(spritePath);

@@ -6,6 +6,11 @@ public class StatComponent : MonoBehaviour
 
     public float GetHealth() {  return health; }
 
+    private void OnEnable()
+    {
+        health = 45f;
+    }
+
     public void SetHealth(float health, MovableUnit unit = null)
     {
         float newHealth = health;

@@ -232,7 +232,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 1
   m_Sprite: {fileID: 8377370498189512621, guid: 7be175af3106ca44bb064ba006eaba33, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -260,6 +260,7 @@ MonoBehaviour:
   mainTransform: {fileID: 1423741141054936895}
   spriteRenderer: {fileID: 1742341423834886840}
   playerColor: {r: 1, g: 0, b: 0, a: 1}
+  currentFrame: 0
 --- !u!65 &7171290761380401545
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -427,6 +428,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   movableUnit: {fileID: 2808056200127217721}
   spriteName: attacking
+  endActionType: 
 --- !u!114 &3022484260400165635
 MonoBehaviour:
   m_ObjectHideFlags: 0

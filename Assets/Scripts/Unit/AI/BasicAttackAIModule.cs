@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using Unity.VisualScripting;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
@@ -162,19 +163,30 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                     self.ResetUnit();
                     ulong newCrowdID = ++UnitManager.crowdIDCounter;
                     self.movementComponent.crowdID = newCrowdID;
+                    lookupTimer = 0;
                 }
                 break;
             case State.MoveTowardsTarget:
                 {
                     //SetTarget(target);
                     self.movementComponent.SetTargetToIgnore(target.id);
+                    foreach (var action in self.actionComponent.actions)
+                    {
+                        if (action.eventId == UnitEventHandler.EventID.OnAttack && action.parameters.Length == 3)
+                        {
+                            action.parameters[1] = target.id;
+                        }
+                    }
+                    
                     targetPosition = target.transform.position;
                     self.movementComponent.StartPathfind(GetPositionCloseToTarget(), true);
+                    lookupTimer = 0;
                 }
                 break;
             case State.AttackTarget:
                 {
                     self.movementComponent.Stop();
+                    lookupTimer = 0;
                 }
                 break;
             default:
@@ -183,7 +195,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         currentState = newState;
     }
 
-    void State_MoveTowardsTarget()
+    void State_MoveTowardsTarget(float deltaTime)
     {
         if (!StatComponent.IsUnitAliveOrValid(target))
         {
@@ -203,14 +215,33 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             return;
         }
 
-        Vector3 newTargetPosition = target.transform.position;
-        Vector3 diff = targetPosition - newTargetPosition;
-        if (diff.sqrMagnitude > thresholdForTargetSqr)
+        void Repath(Vector3 newTargetPosition)
         {
             targetPosition = newTargetPosition;
             self.movementComponent.StartPathfind(GetPositionCloseToTarget(), true);
         }
 
+        Vector3 newTargetPosition = target.transform.position;
+        Vector3 diff = targetPosition - newTargetPosition;
+        if (diff.sqrMagnitude > thresholdForTargetSqr)
+        {
+            Repath(newTargetPosition);
+            //targetPosition = newTargetPosition;
+            //self.movementComponent.StartPathfind(GetPositionCloseToTarget(), true);
+        }
+
+        bool repathCheck = false;
+        if (lookupTimer > lookupTimerLength)
+        {
+            repathCheck = true;
+            lookupTimer = 0;
+        }
+        lookupTimer += deltaTime;
+
+        if (repathCheck && self.movementComponent.movementState == MovementComponent.State.Idle)
+        {
+            Repath(newTargetPosition);
+        }
         //self.combatComponent.StartAction();
     }
 
@@ -242,7 +273,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             }
             self.movementComponent.Stop();
             self.actionComponent.StartAction();
-            UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnAttack, self.id, target.id, 6.0f);
+            //UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnAttack, self.id, target.id, 6.0f);
         }
     }
 
@@ -263,7 +294,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 break;
             case State.MoveTowardsTarget:
                 {
-                    State_MoveTowardsTarget();
+                    State_MoveTowardsTarget(deltaTime);
                 }
                 break;
             case State.AttackTarget:

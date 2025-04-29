@@ -33,7 +33,7 @@ public class UnitManager : MonoBehaviour
 
     public SpatialHashGrid spatialHashGrid;
 
-    public static ulong counter = 0;
+    public static ulong counter = 1;
     public static ulong crowdIDCounter = 0;
 
     public ObjectPool<MovableUnit> movableUnitPool;
@@ -63,7 +63,7 @@ public class UnitManager : MonoBehaviour
             Instance = this;
         }
 
-        counter = 0;
+        counter = 1;
         crowdIDCounter = 0;
 
         //TODO: Make proper player data systerm

@@ -69,6 +69,7 @@ public class UnitEventHandler : MonoBehaviour
     {
         ulong selfId = (ulong)obj[0];
         ulong targetId = (ulong)obj[1];
+        if (selfId == 0 || targetId == 0) return;
         float damage = (float)obj[2];
         Unit targetUnit = UnitManager.Instance.GetUnit(targetId);
         if (targetUnit && targetUnit.GetType() == typeof(MovableUnit))
@@ -78,7 +79,7 @@ public class UnitEventHandler : MonoBehaviour
             targetHealth -= damage;
             movableTargetUnit.statComponent.SetHealth(targetHealth, movableTargetUnit);
         }
-        Debug.Log($"OnAttack Event fired and values are {selfId}, {targetId}, {damage}");
+        //Debug.Log($"OnAttack Event fired and values are {selfId}, {targetId}, {damage}");
     }
 
     private void Event_OnDeath(object[] obj)
@@ -98,7 +99,7 @@ public class UnitEventHandler : MonoBehaviour
                 movableUnit.actionComponent.StartAction();
             }
         }
-        Debug.Log($"OnDeath Event fired and values are {selfId}");
+        //Debug.Log($"OnDeath Event fired and values are {selfId}");
     }
 
     private void Event_OnActionEnd(object[] obj)

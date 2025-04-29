@@ -125,7 +125,7 @@ public class DeterministicUpdateManager : MonoBehaviour
     public int seed = 42;
 
     private float accumulatedTime = 0f;
-    public const float FixedStep = 0.016667f; // 60 Hz
+    public const float FixedStep = 1/ 25f; // 60 Hz
     public DeterministicTimer timer = new DeterministicTimer();
 
     // **Use a list array instead of a dictionary**
@@ -160,6 +160,9 @@ public class DeterministicUpdateManager : MonoBehaviour
             // Run deterministic game logic here
             RunDeterministicUpdate(FixedStep, tickCount);
 
+            if (PathfindingManager.Instance.enabled)
+                PathfindingManager.Instance.DeterministicUpdate(FixedStep, tickCount);
+
             // Step the deterministic timer
             timer.Update(FixedStep);
 
@@ -169,6 +172,9 @@ public class DeterministicUpdateManager : MonoBehaviour
             elapsedTime += Time.deltaTime;
             tickCount++;
         }
+
+        //if (PathfindingManager.Instance.enabled)
+        //    PathfindingManager.Instance.DefaultUpdate();
     }
 
     private void OnDestroy()

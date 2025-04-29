@@ -45,6 +45,7 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
         }
         enabled = true;
         OnPlayOrResumeEvent?.Invoke(resume);
+        OnRefreshEvent?.Invoke();
     }
 
     public void SetSpriteName(string name, bool force)
@@ -73,6 +74,7 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
         }
         enabled = false;
         OnStopOrPauseEvent?.Invoke(stop);
+        OnRefreshEvent?.Invoke();
     }
 
     private void OnEnable()
@@ -92,7 +94,12 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
         {
             if (!isLooping)
             {
+                elapsedFixedTime = duration;
+                OnRefreshEvent?.Invoke();
                 enabled = false;
+            } else
+            {
+                elapsedFixedTime -= duration;
             }
         }
     }
