@@ -26,6 +26,9 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     public Transform aiTransformHolder;
 
+    public UnitAIModule.AIModule defaultModule = UnitAIModule.AIModule.BasicAttackAIModule;
+    public List<object> defaultAiModuleArgs = new List<object>() { null, true };
+
     [SerializeField] DeterministicVisualUpdater DeterministicVisualUpdater;
 
     int actionBlock = 0;
@@ -49,6 +52,42 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
     private void Awake()
     {
         movementComponent = GetComponent<MovementComponent>();
+    }
+
+    public void ResetToDefaultModule()
+    {
+        SetAIModule(defaultModule, defaultAiModuleArgs.ToArray());
+    }
+
+    public void SetAIModule(UnitAIModule.AIModule newModuleType, params object[] aiArgs)
+    {
+        string moduleName = newModuleType.ToString();
+        NativeLogger.Log($"Unit {id} running the module {moduleName}");
+        aiModule.enabled = false;
+        Transform aiModuleTransform = aiTransformHolder.Find(moduleName);
+        aiModule = aiModuleTransform.GetComponent<UnitAIModule>();
+
+        switch (newModuleType)
+        {
+            case UnitAIModule.AIModule.BasicAttackAIModule:
+                {
+                    BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
+                    MovableUnit target = (MovableUnit)aiArgs[0];
+                    bool autoSearchable = (bool)aiArgs[1];
+                    basicAttackAIModule.InitializeAI(this, target, autoSearchable);
+                }
+                break;
+            case UnitAIModule.AIModule.BasicMovementAIModule:
+                {
+                    Vector3 position = (Vector3)aiArgs[0];
+                    ulong crowdId = (ulong)aiArgs[1];
+                    BasicMovementAIModule basicMovementAIModule = (BasicMovementAIModule)aiModule;
+                    basicMovementAIModule.InitializeAI(this, position, crowdId);
+                }
+                break;
+            default:
+                break;
+        }
     }
 
     public DeterministicVisualUpdater GetDeterministicVisualUpdater()
@@ -86,31 +125,18 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 }
             };
 
-            Transform BasicAttackAIModuleTransform = aiTransformHolder.Find("BasicAttackAIModule");
-            if (aiModule && aiModule.GetType() == typeof(BasicAttackAIModule))
-            {
-                BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
-                basicAttackAIModule.InitializeAI(this, null, true);
-            }
+            ResetToDefaultModule();
+            //Transform BasicAttackAIModuleTransform = aiTransformHolder.Find("BasicAttackAIModule");
+            //if (aiModule && aiModule.GetType() == typeof(BasicAttackAIModule))
+            //{
+            //    BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
+            //    basicAttackAIModule.InitializeAI(this, null, true);
+            //}
             DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
         }
     }
 
-    // TODO: Ensure how to reset back to its own default state as well. Like movement AI should fall back to unit's native AI
-    public void ChangeAIModule(UnitAIModule.AIModule newModuleType)
-    {
-        // First clear up old AI Module
-        // Then add new AI Module
-        switch (newModuleType)
-        {
-            case UnitAIModule.AIModule.BasicAttackAIModule:
-                break;
-            default:
-                break;
-        }
-    }
-
-    public void ResetUnit()
+    public void ResetUnit(bool avoidActionReset = false)
     {
         if (movementComponent)
         {
@@ -119,20 +145,21 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         }
         if (actionComponent)
         {
-            actionComponent.StopAction();
+            if (!avoidActionReset)
+                actionComponent.StopAction();
             foreach (var action in actionComponent.actions)
             {
                 if (action.eventId == UnitEventHandler.EventID.OnAttack && action.parameters.Length == 3)
                 {
-                    action.parameters[1] = 0;
+                    action.parameters[1] = (ulong)0;
                 }
             }
         }
-        if (aiModule)
-        {
-            if (!StatComponent.IsUnitAliveOrValid(this))
-                aiModule.enabled = false;
-        }
+        //if (aiModule)
+        //{
+        //    if (!StatComponent.IsUnitAliveOrValid(this))
+        //        aiModule.enabled = false;
+        //}
     }
 
     private void OnEnable()

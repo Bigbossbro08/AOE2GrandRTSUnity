@@ -71,7 +71,7 @@ public class SpatialHashGrid : MonoBehaviour {
                 {
                     foreach (Unit obj in cellObjs)
                     {
-                        if (Vector3.SqrMagnitude(obj.transform.position - position) < radius)
+                        if (Vector3.SqrMagnitude(obj.transform.position - position) < radius * radius)
                         {
                             found.Add(obj);
                         }

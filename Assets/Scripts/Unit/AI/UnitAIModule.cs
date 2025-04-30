@@ -4,7 +4,8 @@ public class UnitAIModule : MonoBehaviour, IDeterministicUpdate, MapLoader.IMapS
 {
     public enum AIModule
     {
-        BasicAttackAIModule
+        BasicAttackAIModule,
+        BasicMovementAIModule
     }
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)

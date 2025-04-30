@@ -223,7 +223,7 @@ public static class NewFormatLoader
                     break;
             }
         }
-        Debug.Log("Texture file parsed successfully: " + textureData.imageFile);
+        NativeLogger.Log("Texture file parsed successfully: " + textureData.imageFile);
         return textureData;
     }
 
@@ -232,12 +232,12 @@ public static class NewFormatLoader
         Texture2D texture = new Texture2D(2, 2);
         if (!File.Exists(path))
         {
-            Debug.LogError("Image file not found: " + path);
+            NativeLogger.Error("Image file not found: " + path);
             return null;
         }
         byte[] imageData = File.ReadAllBytes(path);
         texture.LoadImage(imageData);
-        Debug.Log("Image loaded successfully: " + path);
+        NativeLogger.Log("Image loaded successfully: " + path);
         return texture;
     }
 
@@ -257,7 +257,7 @@ public static class NewFormatLoader
             Sprite sprite = Sprite.Create(texture, rect, pivot);
             sprites.Add(sprite);
         }
-        Debug.Log("Extracted " + sprites.Count + " sprites from texture.");
+        NativeLogger.Log("Extracted " + sprites.Count + " sprites from texture.");
         return sprites;
     }
 }
@@ -378,7 +378,7 @@ public class OpenageSpriteLoader : MonoBehaviour
             listOfSpriteFrames.Add(i, newSpriteFrames);
         }
 
-        Debug.Log($"{spriteFrames.Count} and {listOfSpriteFrames.Count}");
+        NativeLogger.Log($"{spriteFrames.Count} and {listOfSpriteFrames.Count}");
         SpriteDataStorage spriteDataStorage = new SpriteDataStorage
         {
             texture = texture,
@@ -419,7 +419,7 @@ public class OpenageSpriteLoader : MonoBehaviour
         string basePath = Path.GetDirectoryName(spritePath);
         // For now
         string textureName = spriteData.textureNames[0];
-        Debug.Log(textureName);
+        NativeLogger.Log(textureName);
         string texturePath = Path.Combine(basePath, textureName);
         NewFormatLoader.TextureData textureData = NewFormatLoader.ParseTextureFile(texturePath);
         string pngPath = Path.Combine(basePath, textureData.imageFile);
@@ -446,7 +446,7 @@ public class OpenageSpriteLoader : MonoBehaviour
             // Ensure that spriteFrames[f.subtex_id] exists before adding
             if (spriteFrames[f.subtex_id] == null)
             {
-                Debug.LogWarning($"Sprite frame at index {f.subtex_id} is null!");
+                NativeLogger.Warning($"Sprite frame at index {f.subtex_id} is null!");
                 continue; // Skip adding to avoid errors
             }
 
@@ -458,7 +458,7 @@ public class OpenageSpriteLoader : MonoBehaviour
         // 0 for now
         float frameDuration = currentFrameIdx * spriteData.layerDatas[0].timePerFrame;
 
-        Debug.Log($"{spriteName}: {spriteData.layerDatas[0].mode.ToString()}");
+        NativeLogger.Log($"{spriteName}: {spriteData.layerDatas[0].mode.ToString()}");
 
         NewSpriteDataStorage spriteDataStorage = new NewSpriteDataStorage
         {

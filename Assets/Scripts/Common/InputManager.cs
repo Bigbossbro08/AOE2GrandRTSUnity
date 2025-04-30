@@ -90,7 +90,8 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
 
     private void ExecuteCommand(InputCommand command)
     {
-        //Debug.Log($"Executing {command.action} at Frame {command.frame}");
+        if (command.action != "KeepAlive")
+            NativeLogger.Log($"Executing {command.action} at Frame {command.frame}");
         switch (command.action)
         {
             case MoveUnitCommand.commandName:

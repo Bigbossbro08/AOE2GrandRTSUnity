@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using static UnityEngine.GraphicsBuffer;
 
@@ -62,6 +63,13 @@ public class UnitEventHandler : MonoBehaviour
     public void CallEventByID(EventID eventID, params object[] args)
     {
         if (eventID.Equals(EventID.None)) return;
+
+        // Format args to string
+        string formattedArgs = args == null || args.Length == 0
+            ? "(no args)"
+            : string.Join(", ", args.Select(arg => arg?.ToString() ?? "null"));
+
+        NativeLogger.Log($"Called unit event: UnitEventHandler.EventID.{eventID.ToString()}: {formattedArgs}");
         handlers[(int)eventID]?.Invoke(args); // O(1) after mapping
     }
 

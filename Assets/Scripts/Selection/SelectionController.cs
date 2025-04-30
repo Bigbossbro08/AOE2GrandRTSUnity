@@ -18,9 +18,10 @@ public class MoveUnitCommand : InputCommand {
             if (StatComponent.IsUnitAliveOrValid(movableUnit))
             {
                 ulong newCrowdID = ++UnitManager.crowdIDCounter;
-                movableUnit.ResetUnit();
-                movableUnit.movementComponent.StartPathfind(position);
-                movableUnit.movementComponent.crowdID = newCrowdID;
+                movableUnit.ResetUnit(true);
+                //movableUnit.movementComponent.StartPathfind(position);
+                movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID);
+                //movableUnit.movementComponent.crowdID = newCrowdID;
             }
         }
     }
@@ -67,9 +68,10 @@ public class MoveUnitsCommand : InputCommand
                 MovableUnit movableUnit = (MovableUnit)unit;
                 if (StatComponent.IsUnitAliveOrValid(movableUnit))
                 {
-                    movableUnit.ResetUnit();
-                    movableUnit.movementComponent.StartPathfind(unitTarget);
-                    movableUnit.movementComponent.crowdID = newCrowdID;
+                    movableUnit.ResetUnit(true);
+                    movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, unitTarget, newCrowdID);
+                    //movableUnit.movementComponent.StartPathfind(unitTarget);
+                    //movableUnit.movementComponent.crowdID = newCrowdID;
                 }
             }
         }
@@ -132,15 +134,18 @@ public class AttackUnitCommand : InputCommand
                 MovableUnit movableTargetUnit = (MovableUnit)targetUnit;
                 if (movableUnit.aiModule)
                 {
-                    BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)movableUnit.aiModule;
-                    if (basicAttackAIModule)
-                    {
-                        movableUnit.ResetUnit();
-                        basicAttackAIModule.InitializeAI(movableUnit, movableTargetUnit);
-                        ulong newCrowdID = ++UnitManager.crowdIDCounter;
-                        movableUnit.movementComponent.crowdID = newCrowdID;
-                        Debug.Log("Executing attack");
-                    }
+                    movableUnit.ResetUnit(true);
+                    ulong newCrowdID = ++UnitManager.crowdIDCounter;
+                    movableUnit.SetAIModule(UnitAIModule.AIModule.BasicAttackAIModule, movableTargetUnit, true);
+                    //BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)movableUnit.aiModule;
+                    //if (basicAttackAIModule)
+                    //{
+                    //    movableUnit.ResetUnit();
+                    //    basicAttackAIModule.InitializeAI(movableUnit, movableTargetUnit);
+                    //    ulong newCrowdID = ++UnitManager.crowdIDCounter;
+                    //    movableUnit.movementComponent.crowdID = newCrowdID;
+                    //    Debug.Log("Executing attack");
+                    //}
                 }
             }
         }

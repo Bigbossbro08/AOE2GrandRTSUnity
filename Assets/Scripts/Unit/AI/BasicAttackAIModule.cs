@@ -154,6 +154,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     void ChangeState(State newState)
     {
+        if (newState == currentState) return;
         // Used for cleaning up
         switch (newState)
         {
@@ -161,8 +162,8 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 {
                     target = null;
                     self.ResetUnit();
-                    ulong newCrowdID = ++UnitManager.crowdIDCounter;
-                    self.movementComponent.crowdID = newCrowdID;
+                    //ulong newCrowdID = ++UnitManager.crowdIDCounter;
+                    //self.movementComponent.crowdID = newCrowdID;
                     lookupTimer = 0;
                 }
                 break;
@@ -185,7 +186,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 break;
             case State.AttackTarget:
                 {
-                    self.movementComponent.Stop();
+                    PerformAttackAction();
                     lookupTimer = 0;
                 }
                 break;
@@ -193,6 +194,22 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 break;
         }
         currentState = newState;
+    }
+
+    void PerformAttackAction()
+    {
+        if (!self.actionComponent.IsPlayingAction())
+        {
+            Vector3 diff = target.transform.position - self.transform.position;
+            diff = diff.normalized;
+            if (diff != Vector3.zero)
+            {
+                float yAngle = Mathf.Atan2(diff.x, diff.z) * Mathf.Rad2Deg;
+                self.transform.eulerAngles = new Vector3(0, yAngle, 0);
+            }
+            self.movementComponent.Stop();
+            self.actionComponent.StartAction();
+        }
     }
 
     void State_MoveTowardsTarget(float deltaTime)
@@ -207,11 +224,6 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         if (IsTargetWithinRange())
         {
             ChangeState(State.AttackTarget);
-            return;
-        }
-
-        if (self.actionComponent.IsPlayingAction())
-        {
             return;
         }
 
@@ -262,19 +274,12 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             return;
         }
 
-        if (!self.actionComponent.IsPlayingAction())
-        {
-            Vector3 diff = target.transform.position - self.transform.position;
-            diff = diff.normalized;
-            if (diff != Vector3.zero)
-            {
-                float yAngle = Mathf.Atan2(diff.x, diff.z) * Mathf.Rad2Deg;
-                self.transform.eulerAngles = new Vector3(0, yAngle, 0);
-            }
-            self.movementComponent.Stop();
-            self.actionComponent.StartAction();
-            //UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnAttack, self.id, target.id, 6.0f);
-        }
+        PerformAttackAction();
+    }
+
+    bool isUpdateBlockable()
+    {
+        return self.actionComponent.IsPlayingAction();
     }
 
     public new void DeterministicUpdate(float deltaTime, ulong tickID)
@@ -282,6 +287,11 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         if (!IsUpdateable())
         {
             enabled = false;
+            return;
+        }
+
+        if (isUpdateBlockable())
+        {
             return;
         }
 
@@ -322,12 +332,12 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         DeterministicUpdateManager.Instance.Unregister(this);
         self = null;
         target = null;
-        currentState = State.MoveTowardsTarget;
+        currentState = State.LookingForTarget;
     }
 
     public void InitializeAI(MovableUnit self, MovableUnit target = null, bool autoSearchable = true)
     {
-        if (self)
+        if (StatComponent.IsUnitAliveOrValid(self))
         {
             this.self = self;
             bool shouldBeEnabled = false;

@@ -335,7 +335,7 @@ public class GridGeneration : MonoBehaviour
         void LinkBetweenChunk(Vector2Int mainChunkIndex, Vector2Int neighbouringChunkIndex)
         {
             Vector2Int diff = neighbouringChunkIndex - mainChunkIndex;
-            Debug.Log(diff);
+            NativeLogger.Log($"{diff}");
             if (diff == new Vector2Int(-1, 0))
             {
                 // Top edge (left to right)
@@ -502,7 +502,7 @@ public class GridGeneration : MonoBehaviour
         // Call UpdateNavMeshDataAsync to avoid blocking the main thread
         yield return NavMeshBuilder.UpdateNavMeshDataAsync(navMeshData, settings, navMeshBuildSources, bounds);
 
-        Debug.Log($"NavMesh Chunk at {offset} baked successfully.");
+        NativeLogger.Log($"NavMesh Chunk at {offset} baked successfully.");
     }
 
     //IEnumerator GenerateChunks()

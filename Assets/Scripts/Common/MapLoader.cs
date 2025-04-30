@@ -296,6 +296,6 @@ public class MapLoader : MonoBehaviour
 
     private void OnApplicationQuit()
     {
-        Save();
+        //Save();
     }
 }

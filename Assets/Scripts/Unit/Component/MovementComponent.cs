@@ -68,7 +68,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     //public bool isAutoReverseable = false;
     //public bool canApplyBoidsAvoidance = false;
 
-    public ulong crowdID = 0;
+    //public ulong crowdID = 0;
     
     int conditionToBlockBoids = 0;
     int conditionToActivateRaycast = 0;
@@ -168,7 +168,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         // Find the shortest angle difference
         float angleDifference = Mathf.DeltaAngle(currentAngle, targetAngle);
 
-        // Move forward if within ±90°; otherwise, move backward
+        // Move forward if within ï¿½90ï¿½; otherwise, move backward
         return Mathf.Abs(angleDifference) < 90f;
     }
 
@@ -328,34 +328,34 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         var finalPos = SampleNavMesh(nextPos2D, targetY);
         transform.localPosition = finalPos;
 
-        System.Action action = () =>
-        {
-            foreach (Unit obj in nearbyObjs)
-            {
-                if (obj.TryGetComponent(out MovementComponent otherMovement))
-                {
-                    if (obj.gameObject == gameObject) continue;
-                    if (otherMovement.positions.Count != 0) continue;
-                    if (otherMovement.crowdID != crowdID) continue;
-                    Vector3 diffToOtherObj = transform.position - obj.transform.position;
-                    float cmpFloat = movementDelta + 2 * radius;
-                    float cmpSqr = cmpFloat * cmpFloat;
-                    if (diffToOtherObj.sqrMagnitude < cmpFloat)
-                    {
-                        //Debug.Log($"{diffToOtherObj.sqrMagnitude} and {cmpFloat}");
-                        Stop();
-                        break;
-                    }
-                }
-            }
-        };
+        //System.Action action = () =>
+        //{
+        //    foreach (Unit obj in nearbyObjs)
+        //    {
+        //        if (obj.TryGetComponent(out MovementComponent otherMovement))
+        //        {
+        //            if (obj.gameObject == gameObject) continue;
+        //            if (otherMovement.positions.Count != 0) continue;
+        //            if (otherMovement.crowdID != crowdID) continue;
+        //            Vector3 diffToOtherObj = transform.position - obj.transform.position;
+        //            float cmpFloat = movementDelta + 2 * radius;
+        //            float cmpSqr = cmpFloat * cmpFloat;
+        //            if (diffToOtherObj.sqrMagnitude < cmpFloat)
+        //            {
+        //                //Debug.Log($"{diffToOtherObj.sqrMagnitude} and {cmpFloat}");
+        //                Stop();
+        //                break;
+        //            }
+        //        }
+        //    }
+        //};
 
         // TODO: Add proper cleanup of timer
-        DeterministicUpdateManager.Instance.timer.AddTimer(0, action);
+        //DeterministicUpdateManager.Instance.timer.AddTimer(0, action);
     }
 
     // Helpers
-    Vector2 ToVector2(Vector3 v) => new Vector2(v.x, v.z);
+    public static Vector2 ToVector2(Vector3 v) => new Vector2(v.x, v.z);
 
     bool UseRaycastHeight() => conditionToActivateRaycast > 0;
 
@@ -404,6 +404,8 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         return idsToIgnore.Contains(u.id);
     }
 
+    public bool HasPathPositions() { return positions.Count != 0; }
+
     Vector3 SampleNavMesh(Vector2 pos2D, float y)
     {
         var worldPos = new Vector3(pos2D.x, y, pos2D.y);
@@ -412,7 +414,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         return worldPos;
     }
 
-    Vector3 ToVector3(Vector2 v2, float y) => new Vector3(v2.x, y, v2.y);
+    public static Vector3 ToVector3(Vector2 v2, float y) => new Vector3(v2.x, y, v2.y);
 
     public void SetTargetToIgnore(ulong? id = null)
     {
@@ -571,7 +573,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             //if (NavMesh.CalculatePath(start, end, isWater ? 1 << 3 : 1, path))
             if (GridGeneration.CalculatePath(start, end, areaMask, ref path))
             {
-                Debug.Log($"Used pathfinding using navmesh and path count is {path.corners.Length}");
+                //NativeLogger.Log($"Used pathfinding using navmesh and path count is {path.corners.Length}");
                 if (IsOnShip())
                 {
                     int counter = 0;
@@ -708,7 +710,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         movementSpeed = movementComponentData.movementSpeed;
         rotationSpeed = movementComponentData.rotationSpeed;
         flags = (MovementFlag)movementComponentData.flags;
-        crowdID = movementComponentData.crowdID;
+        //crowdID = movementComponentData.crowdID;
         conditionToBlockBoids = movementComponentData.conditionToBlockBoids;
         conditionToActivateRaycast = movementComponentData.conditionToActivateRaycast;
         positions = movementComponentData.positions.Select(v => (Vector3)v).ToList();
@@ -732,7 +734,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             //isAutoReverseable = isAutoReverseable,
             //canApplyBoidsAvoidance = canApplyBoidsAvoidance,
 
-            crowdID = crowdID,
+            //crowdID = crowdID,
 
             conditionToBlockBoids = conditionToBlockBoids,
             conditionToActivateRaycast = conditionToActivateRaycast,

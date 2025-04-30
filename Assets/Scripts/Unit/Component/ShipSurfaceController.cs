@@ -149,21 +149,21 @@ public class ShipSurfaceController : MonoBehaviour, MapLoader.IMapSaveLoad
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.LogWarning(other.name);
+        //Debug.LogWarning(other.name);
+        NativeLogger.Info(other.name, true);
         if (other.TryGetComponent(out MovableUnit unit))
         {
             units.TryAdd(unit.id, unit);
-            Debug.Log("Added unit: " + other.transform.root.gameObject.name);
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
-        Debug.LogWarning(other.name);
+        NativeLogger.Info(other.name);
         if (other.TryGetComponent(out MovableUnit unit) && units.ContainsKey(unit.id))
         {
             units.Remove(unit.id);
-            Debug.Log("Removed unit: " + unit.name);
+            NativeLogger.Info("Removed unit: " + unit.name);
         }
         //Debug.Log($"{other.gameObject.name} has exited the ship");
         //if (units.Contains(other.transform.root.gameObject))
