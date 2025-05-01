@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IMapSaveLoad
 {
+    [System.Serializable]
     public class ActionEvent
     {
         public float timer = 0;
@@ -20,7 +21,7 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
         }
     }
 
-    public List<ActionEvent> actions = new List<ActionEvent>();
+    [SerializeField] public List<ActionEvent> actions = new List<ActionEvent>();
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
@@ -40,8 +41,8 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
             }
         } else
         {
-            OnEndAction();
             StopAction();
+            OnEndAction();
         }
     }
 

@@ -1,10 +1,12 @@
 using Newtonsoft.Json;
 using NUnit.Framework;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using static PathfinderTest;
 using static Unit;
 using static UnityEngine.GraphicsBuffer;
+using static UnityEngine.Rendering.GPUSort;
 
 [RequireComponent(typeof(MovementComponent))]
 public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
@@ -62,7 +64,14 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
     public void SetAIModule(UnitAIModule.AIModule newModuleType, params object[] aiArgs)
     {
         string moduleName = newModuleType.ToString();
-        NativeLogger.Log($"Unit {id} running the module {moduleName}");
+
+        // Format args to string
+        string formattedArgs = aiArgs == null || aiArgs.Length == 0
+        ? "(no args)"
+            : string.Join(", ", aiArgs.Select(arg => arg?.ToString() ?? "null"));
+
+        NativeLogger.Log($"Unit {id} running the module {moduleName} and arguments {formattedArgs}");
+
         aiModule.enabled = false;
         Transform aiModuleTransform = aiTransformHolder.Find(moduleName);
         aiModule = aiModuleTransform.GetComponent<UnitAIModule>();
@@ -81,6 +90,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 {
                     Vector3 position = (Vector3)aiArgs[0];
                     ulong crowdId = (ulong)aiArgs[1];
+
                     BasicMovementAIModule basicMovementAIModule = (BasicMovementAIModule)aiModule;
                     basicMovementAIModule.InitializeAI(this, position, crowdId);
                 }
@@ -99,19 +109,41 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
     {
         UnitManager.MilitaryUnit militaryUnit = UnitManager.Instance.LoadMilitaryUnit(unitDataName);
         gameObject.tag = "Military Unit";
+        statComponent.SetHealth(militaryUnit.hp);
         standSprite = militaryUnit.standing;
         walkSprite = militaryUnit.walking;
-        
-        if (actionComponent)
+
+        CombatComponent combatComponent = unitTypeComponent as CombatComponent;
+        if (combatComponent)
         {
-            List<ActionComponent.ActionEvent> actionEvents = new List<ActionComponent.ActionEvent>() { 
-                // ulong selfId = (ulong)obj[0];
-                // ulong targetId = (ulong)obj[1];
-                // float damage = (float)obj[2];
-                new ActionComponent.ActionEvent(1.0f, UnitEventHandler.EventID.OnAttack, new List<object>() { id, 0, 6.0f })
-            };
-            actionComponent.SetActionSprite(militaryUnit.attacking, "", actionEvents);
+            combatComponent.attackSprite = militaryUnit.attacking;
+            combatComponent.damage = militaryUnit.damage;
+            combatComponent.attackRange = militaryUnit.attack_range;
+            combatComponent.attackDelay = militaryUnit.attack_delay;
+            combatComponent.actionEvents.Clear();
+
+            for (int i = 0; i < militaryUnit.combatActionEvents.Count; i++)
+            {
+                UnitManager.MilitaryUnit.CombatActionEvent eventData = militaryUnit.combatActionEvents[i];
+                if (System.Enum.TryParse(eventData.eventType, out UnitEventHandler.EventID eventID))
+                {
+                    ActionComponent.ActionEvent attackEvent 
+                        = new ActionComponent.ActionEvent(eventData.time, UnitEventHandler.EventID.OnAttack, new List<object>() { id, 0, militaryUnit.damage });
+                    combatComponent.actionEvents.Add(attackEvent);
+                }
+            }
         }
+
+        //if (actionComponent)
+        //{
+        //    List<ActionComponent.ActionEvent> actionEvents = new List<ActionComponent.ActionEvent>() { 
+        //        // ulong selfId = (ulong)obj[0];
+        //        // ulong targetId = (ulong)obj[1];
+        //        // float damage = (float)obj[2];
+        //        new ActionComponent.ActionEvent(militaryUnit.attack_delay, UnitEventHandler.EventID.OnAttack, new List<object>() { id, 0, militaryUnit.damage })
+        //    };
+        //    actionComponent.SetActionSprite(militaryUnit.attacking, "", actionEvents);
+        //}
 
         if (callVisualUpdate) {
             System.Action action = () =>

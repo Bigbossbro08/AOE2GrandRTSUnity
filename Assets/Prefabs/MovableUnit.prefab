@@ -39,12 +39,16 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 187686550896793706}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 728c89c358c687642b30ba0eb07142f1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackSprite: 
+  damage: 0
   attackRange: 0
+  attackDelay: 0
+  currentAttackDelay: 0
   stance: 0
 --- !u!1 &811680468571621435
 GameObject:
@@ -150,7 +154,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2120004541414238474}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 486af711fef5c7b4db4120039d2f2ab5, type: 3}
   m_Name: 
@@ -377,7 +381,6 @@ MonoBehaviour:
   rotationSpeed: 5
   movementState: 0
   flags: 17
-  crowdID: 0
 --- !u!136 &6778813792287557513
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -482,7 +485,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5404947798866862044}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0ea0ee73f1b6a23469987fbe983db03a, type: 3}
   m_Name: 

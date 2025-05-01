@@ -543,7 +543,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1423741141054936895, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 127.241
+      value: 127.67
       objectReference: {fileID: 0}
     - target: {fileID: 1423741141054936895, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -600,7 +600,7 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1423741141054936895, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 123.32
+      value: 123.09
       objectReference: {fileID: 0}
     - target: {fileID: 1423741141054936895, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
       propertyPath: m_LocalPosition.y
@@ -608,7 +608,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1423741141054936895, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 96.04079
+      value: 95.54
       objectReference: {fileID: 0}
     - target: {fileID: 1423741141054936895, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
       propertyPath: m_LocalRotation.w
@@ -641,6 +641,10 @@ PrefabInstance:
     - target: {fileID: 2808056200127217721, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
       propertyPath: playerId
       value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2808056200127217721, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
+      propertyPath: unitDataName
+      value: military_units\swordsman
       objectReference: {fileID: 0}
     - target: {fileID: 5063327841519701295, guid: 1de6164c847176c4baedd4110233fc0d, type: 3}
       propertyPath: m_Name

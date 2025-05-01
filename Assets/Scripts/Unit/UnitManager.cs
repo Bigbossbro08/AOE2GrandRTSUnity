@@ -1,3 +1,4 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,6 +23,19 @@ public class UnitManager : MonoBehaviour
 {
     public class MilitaryUnit
     {
+        public class CombatActionEvent
+        {
+            public string eventType;
+            public float time;
+        }
+
+        public float hp = 45.0f;
+        public float attack_delay = 1.0f;
+        public float attack_range = 0.0f;
+
+        [JsonProperty("attack_events")]
+        public List<CombatActionEvent> combatActionEvents = new List<CombatActionEvent>();
+        public float damage = 6.0f;
         public string standing = "archer_standing";
         public string walking = "archer_walking";
         public string attacking = "archer_attacking";
@@ -242,7 +256,7 @@ public class UnitManager : MonoBehaviour
             return null;
         }
         string jsonPath = Path.Combine(dataPath, name + ".json");
-        MilitaryUnit militaryUnit = JsonUtility.FromJson<MilitaryUnit>(File.ReadAllText(jsonPath));
+        MilitaryUnit militaryUnit = JsonConvert.DeserializeObject<MilitaryUnit>(File.ReadAllText(jsonPath));
         return militaryUnit;
     }
 }

@@ -140,8 +140,13 @@ public class UnitEventHandler : MonoBehaviour
                         //    UnitManager.MilitaryUnit militaryUnit = UnitManager.Instance.LoadMilitaryUnit(movableUnit.unitDataName);
                         //}
                     }
-                    break;
                 }
+                break;
+            case "CombatEndAction":
+                {
+
+                }
+                break;
         }
 
         //Debug.Log($"OnActionEnd Event fired and values are {actionEndType}");

@@ -1,0 +1,1 @@
+Get-Content "Logs/unity_native.log" -Wait -Tail 0

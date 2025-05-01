@@ -33,7 +33,9 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     }
 
     State currentState;
+
     MovableUnit self;
+    CombatComponent combatComponent = null; // Cache
     MovableUnit target;
 
     float lookupTimer = 0;
@@ -186,7 +188,10 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 break;
             case State.AttackTarget:
                 {
-                    PerformAttackAction();
+                    if (CanPerformAttack())
+                    {
+                        PerformAttackAction();
+                    }
                     lookupTimer = 0;
                 }
                 break;
@@ -209,6 +214,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             }
             self.movementComponent.Stop();
             self.actionComponent.StartAction();
+            combatComponent.StartDelay();
         }
     }
 
@@ -257,6 +263,15 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         //self.combatComponent.StartAction();
     }
 
+    bool CanPerformAttack()
+    {
+        if (combatComponent)
+        {
+            return !combatComponent.IsAttackDelayInProgress();
+        }
+        return true;
+    }
+
     void State_AttackTarget()
     {
         if (!StatComponent.IsUnitAliveOrValid(target))
@@ -274,7 +289,10 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             return;
         }
 
-        PerformAttackAction();
+        if (CanPerformAttack())
+        {
+            PerformAttackAction();
+        }
     }
 
     bool isUpdateBlockable()
@@ -331,6 +349,8 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     {
         DeterministicUpdateManager.Instance.Unregister(this);
         self = null;
+        combatComponent = null;
+        lookupTimer = 0.0f;
         target = null;
         currentState = State.LookingForTarget;
     }
@@ -340,6 +360,15 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         if (StatComponent.IsUnitAliveOrValid(self))
         {
             this.self = self;
+
+            if (self.unitTypeComponent.GetType() == typeof(CombatComponent))
+            {
+                CombatComponent combatComponent = self.unitTypeComponent as CombatComponent;
+                this.combatComponent = combatComponent;
+                NativeLogger.Log($"ID:{self.id}, Action Count: {combatComponent.actionEvents.Count}");
+                self.actionComponent.SetActionSprite(combatComponent.attackSprite, "CombatEndAction", combatComponent.actionEvents);
+            }
+            
             bool shouldBeEnabled = false;
             if (target)
             {
