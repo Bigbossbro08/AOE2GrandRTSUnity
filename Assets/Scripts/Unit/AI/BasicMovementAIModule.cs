@@ -15,6 +15,15 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
     Vector3 position;
     ulong crowdId;
     bool isActionLocked = false;
+    bool startedPathfinding = false;
+    bool isMoving = false;
+
+    void DoPathfind()
+    {
+        self.movementComponent.StartPathfind(position);
+        position = self.movementComponent.GetLastPointInPathfinding();
+        startedPathfinding = true;
+    }
 
     void ChangeState(State newState)
     {
@@ -26,7 +35,9 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
                 {
                     isActionLocked = self.actionComponent.IsPlayingAction();
                     if (!isActionLocked)
-                        self.movementComponent.StartPathfind(position);
+                    {
+                        DoPathfind();
+                    }
                 }
                 break;
             case State.ReachedDestination:
@@ -49,7 +60,7 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
     {
         if (isActionLocked && !self.actionComponent.IsPlayingAction())
         {
-            self.movementComponent.StartPathfind(position);
+            DoPathfind();
             isActionLocked = false;
             return;
         }
@@ -59,7 +70,13 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
             return;
         }
 
-        if (self.movementComponent.movementState == MovementComponent.State.Moving)
+        if (startedPathfinding && self.movementComponent.movementState == MovementComponent.State.Moving && !isMoving)
+        {
+            isMoving = true;
+            return;
+        }
+
+        if (isMoving)
         {
             // TODO: Make proper solution for stop in group behavior or find better solutions
             //float radius = self.movementComponent.radius;
@@ -87,7 +104,11 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
             //        break;
             //    }
             //}
-            if (currentState == State.ReachedDestination) return;
+            //if (currentState == State.ReachedDestination) return;
+
+            if (self.movementComponent.movementState == MovementComponent.State.Idle) {
+                ChangeState(State.ReachedDestination);
+            }
 
             //Vector2 diff = MovementComponent.ToVector2(self.movementComponent.GetLastPointInPathfinding()) - MovementComponent.ToVector2(self.transform.position);
             //if (diff.sqrMagnitude < 0.0001f)
@@ -101,11 +122,10 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
             return;
         }
 
-        Vector2 diff = MovementComponent.ToVector2(position) - MovementComponent.ToVector2(self.transform.position);
-        if (self.movementComponent.movementState == MovementComponent.State.Idle && 
-                !self.movementComponent.HasPathPositions() &&
-                diff.sqrMagnitude < 0.0001f)
-            ChangeState(State.ReachedDestination);
+        //if (self.movementComponent.movementState == MovementComponent.State.Idle)
+        //{
+        //    ChangeState(State.ReachedDestination);
+        //}
     }
 
     public new void DeterministicUpdate(float deltaTime, ulong tickID)
@@ -144,7 +164,9 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         DeterministicUpdateManager.Instance.Unregister(this);
         self = null;
         currentState = State.MoveTowardsPoint;
-        isActionLocked = false;
+        isActionLocked = false; 
+        startedPathfinding = false;
+        isMoving = false;
     }
 
     public new void Load(MapLoader.SaveLoadData data)

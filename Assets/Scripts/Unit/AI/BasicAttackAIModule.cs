@@ -175,7 +175,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                     self.movementComponent.SetTargetToIgnore(target.id);
                     foreach (var action in self.actionComponent.actions)
                     {
-                        if (action.eventId == UnitEventHandler.EventID.OnAttack && action.parameters.Length == 3)
+                        if (action.eventId == UnitEventHandler.EventID.OnAttack || action.eventId == UnitEventHandler.EventID.OnProjectileAttack)
                         {
                             action.parameters[1] = target.id;
                         }
@@ -201,17 +201,21 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         currentState = newState;
     }
 
+    void RotateTowardsTarget()
+    {
+        Vector3 diff = target.transform.position - self.transform.position;
+        diff = diff.normalized;
+        if (diff != Vector3.zero)
+        {
+            float yAngle = Mathf.Atan2(diff.x, diff.z) * Mathf.Rad2Deg;
+            self.transform.eulerAngles = new Vector3(0, yAngle, 0);
+        }
+    }
+
     void PerformAttackAction()
     {
         if (!self.actionComponent.IsPlayingAction())
         {
-            Vector3 diff = target.transform.position - self.transform.position;
-            diff = diff.normalized;
-            if (diff != Vector3.zero)
-            {
-                float yAngle = Mathf.Atan2(diff.x, diff.z) * Mathf.Rad2Deg;
-                self.transform.eulerAngles = new Vector3(0, yAngle, 0);
-            }
             self.movementComponent.Stop();
             self.actionComponent.StartAction();
             combatComponent.StartDelay();
@@ -289,6 +293,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             return;
         }
 
+        RotateTowardsTarget();
         if (CanPerformAttack())
         {
             PerformAttackAction();

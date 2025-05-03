@@ -41,7 +41,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     // Basic Stats
     public float radius = 0.2f;
-    public float movementSpeed = 0.92f;
+    public float movementSpeed = 0.96f;
     public float rotationSpeed = 5.0f;
 
 
@@ -315,7 +315,9 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         if (UseRaycastHeight())
         {
             if (TryGetGroundHeight(nextPos2D, out float groundY))
+            {
                 targetY = groundY;
+            }
         }
 
         // 3. Apply boids avoidance if enabled
@@ -326,6 +328,20 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
         // 4. Finalize position using NavMesh sampling
         var finalPos = SampleNavMesh(nextPos2D, targetY);
+        //if (false) // Change condition to height debug
+        //{
+        //    NativeLogger.Log($"Height found: {finalPos.y}, did it used raycast? {UseRaycastHeight()}, did it applied boids? {ShouldApplyBoids()}");
+        //
+        //    var worldPos = new Vector3(nextPos2D.x, targetY, nextPos2D.y);
+        //    if (NavMesh.SamplePosition(worldPos, out var hit, 0.5f, GetAreaMask()))
+        //    {
+        //        NativeLogger.Log($"Hit detection was: {hit.position.y}");
+        //    }
+        //    else
+        //    {
+        //        NativeLogger.Log($"Sample wasnt taken but targetY was: {targetY}");
+        //    }
+        //}
         transform.localPosition = finalPos;
 
         //System.Action action = () =>
@@ -391,7 +407,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
         // Sample on NavMesh
         var candidate = currentPos + separation;
-        if (NavMesh.SamplePosition(ToVector3(candidate, transform.localPosition.y), out NavMeshHit hit, UseRaycastHeight() ? 20f : 0.5f, GetAreaMask()))
+        if (NavMesh.SamplePosition(ToVector3(candidate, transform.localPosition.y), out NavMeshHit hit, UseRaycastHeight() ? 20f : 0.2f, GetAreaMask()))
         {
             return new Vector2(hit.position.x, hit.position.z);
         }
@@ -449,7 +465,9 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
                 ControlRotation(newPosition, oldPosition, deltaTime);
             }
 
-            if (Vector3.Distance(transform.localPosition, position) < movementDeltaValue)
+            Vector2 transformLocalPos2D = ToVector2(transform.localPosition);
+            Vector2 position2D = ToVector2(position);
+            if ((transformLocalPos2D - position2D).sqrMagnitude < movementDeltaValue * movementDeltaValue)
             {
                 isMarkedForDeletion = true;
             }

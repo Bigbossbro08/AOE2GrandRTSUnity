@@ -113,6 +113,11 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         standSprite = militaryUnit.standing;
         walkSprite = militaryUnit.walking;
 
+        if (movementComponent)
+        {
+            movementComponent.movementSpeed = militaryUnit.movement_speed;
+        }
+
         CombatComponent combatComponent = unitTypeComponent as CombatComponent;
         if (combatComponent)
         {
@@ -128,7 +133,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 if (System.Enum.TryParse(eventData.eventType, out UnitEventHandler.EventID eventID))
                 {
                     ActionComponent.ActionEvent attackEvent 
-                        = new ActionComponent.ActionEvent(eventData.time, UnitEventHandler.EventID.OnAttack, new List<object>() { id, 0, militaryUnit.damage });
+                        = new ActionComponent.ActionEvent(eventData.time, eventID, new List<object>() { id, 0, militaryUnit.damage });
                     combatComponent.actionEvents.Add(attackEvent);
                 }
             }

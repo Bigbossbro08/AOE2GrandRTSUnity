@@ -144,6 +144,7 @@ public class DeterministicUpdateManager : MonoBehaviour
         UnityEngine.Random.InitState(seed);
 
         enabled = false;
+        Time.fixedDeltaTime = FixedStep;
         Physics.simulationMode = SimulationMode.Script;
     }
 

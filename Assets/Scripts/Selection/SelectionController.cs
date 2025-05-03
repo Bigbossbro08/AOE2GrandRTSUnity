@@ -124,6 +124,7 @@ public class AttackUnitCommand : InputCommand
 
     public void Execute()
     {
+        if (unitID == targetID) return;
         Unit unit = UnitManager.Instance.GetUnit(unitID);
         Unit targetUnit = UnitManager.Instance.GetUnit(targetID);
         if (unit && targetUnit)

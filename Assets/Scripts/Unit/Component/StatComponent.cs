@@ -16,11 +16,18 @@ public class StatComponent : MonoBehaviour
         float newHealth = health;
         if (newHealth <= 0.0f)
         {
-            if (unit)
+            if (IsUnitAliveOrValid(unit))
                 UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnDeath, unit.id);
             newHealth = 0.0f;
         }
         this.health = newHealth;
+    }
+
+    public static void DamageUnit(MovableUnit targetUnit, float damage)
+    {
+        float targetHealth = targetUnit.statComponent.GetHealth();
+        targetHealth -= damage;
+        targetUnit.statComponent.SetHealth(targetHealth, targetUnit);
     }
 
     public static bool IsUnitAliveOrValid(MovableUnit unit)

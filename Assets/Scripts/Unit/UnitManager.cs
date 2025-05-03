@@ -30,6 +30,7 @@ public class UnitManager : MonoBehaviour
         }
 
         public float hp = 45.0f;
+        public float movement_speed = 0.96f;
         public float attack_delay = 1.0f;
         public float attack_range = 0.0f;
 
@@ -53,6 +54,7 @@ public class UnitManager : MonoBehaviour
     public ObjectPool<MovableUnit> movableUnitPool;
     public ObjectPool<ShipUnit> shipUnitPool;
     public ObjectPool<DeadUnit> deadUnitPool;
+    public ObjectPool<ProjectileUnit> projectileUnitPool;
 
     Dictionary<ulong, PlayerData> players = new Dictionary<ulong, PlayerData>();
     Dictionary<ulong, Unit> units = new Dictionary<ulong, Unit>(5000);
@@ -60,6 +62,7 @@ public class UnitManager : MonoBehaviour
     public MovableUnit movableUnitPrefab;
     public ShipUnit shipUnitPrefab;
     public DeadUnit deadUnitPrefab;
+    public ProjectileUnit projectileUnitPrefab;
 
     public string dataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\data";
 
@@ -97,6 +100,7 @@ public class UnitManager : MonoBehaviour
         movableUnitPool = new ObjectPool<MovableUnit>(SpawnMovableUnit, GetMovableUnitfromPool, ReleaseMovableUnitfromPool, DestroyMovableUnitfromPool, false, 200, 5000);
         shipUnitPool = new ObjectPool<ShipUnit>(SpawnShipUnit, GetShipUnitFromPool, ReleaseShipUnitFromPool, DestroyShipUnitFromPool);
         deadUnitPool = new ObjectPool<DeadUnit>(SpawnDeadUnit, GetDeadUnitFromPool, ReleaseDeadUnitFromPool, DestroyDeadUnitFromPool);
+        projectileUnitPool = new ObjectPool<ProjectileUnit>(SpawnProjectileUnit, GetProjectileUnitFromPool, ReleaseProjectileUnitFromPool, DestroyProjectileUnitFromPool);
     }
 
     private DeadUnit SpawnDeadUnit()
@@ -182,6 +186,37 @@ public class UnitManager : MonoBehaviour
     }
 
     private void DestroyMovableUnitfromPool(MovableUnit unit)
+    {
+        if (units.ContainsKey(unit.id))
+        {
+            units.Remove(unit.id);
+        }
+        Destroy(unit);
+    }
+    #endregion
+
+    #region ProjectileUnit
+    private void GetProjectileUnitFromPool(ProjectileUnit unit)
+    {
+        unit.gameObject.SetActive(true);
+    }
+
+    private ProjectileUnit SpawnProjectileUnit()
+    {
+        ProjectileUnit movableUnit = Instantiate(projectileUnitPrefab);
+        return movableUnit;
+    }
+
+    private void ReleaseProjectileUnitFromPool(ProjectileUnit unit)
+    {
+        if (units.ContainsKey(unit.id))
+        {
+            units.Remove(unit.id);
+        }
+        unit.gameObject.SetActive(false);
+    }
+
+    private void DestroyProjectileUnitFromPool(ProjectileUnit unit)
     {
         if (units.ContainsKey(unit.id))
         {

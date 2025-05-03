@@ -13,7 +13,8 @@ public class UnitEventHandler : MonoBehaviour
         None = 0,
         OnAttack,
         OnDeath,
-        OnActionEnd
+        OnActionEnd,
+        OnProjectileAttack
     }
 
     void Awake()
@@ -39,6 +40,7 @@ public class UnitEventHandler : MonoBehaviour
         RegisterEvent((int)EventID.OnAttack, Event_OnAttack);
         RegisterEvent((int)EventID.OnDeath, Event_OnDeath);
         RegisterEvent((int)EventID.OnActionEnd, Event_OnActionEnd);
+        RegisterEvent((int)EventID.OnProjectileAttack, Event_OnProjectileAttack);
     }
 
     public void RegisterEvent(int id, Action<object[]> handler)
@@ -50,6 +52,7 @@ public class UnitEventHandler : MonoBehaviour
         { "OnAttack", EventID.OnAttack },
         { "OnDeath", EventID.OnDeath },
         { "OnActionEnd", EventID.OnActionEnd },
+        { "OnProjectileAttack", EventID.OnProjectileAttack }
     };
 
     public void CallEvent(string name, params object[] args)
@@ -82,12 +85,40 @@ public class UnitEventHandler : MonoBehaviour
         Unit targetUnit = UnitManager.Instance.GetUnit(targetId);
         if (targetUnit && targetUnit.GetType() == typeof(MovableUnit))
         {
-            MovableUnit movableTargetUnit = (MovableUnit)targetUnit;
-            float targetHealth = movableTargetUnit.statComponent.GetHealth();
-            targetHealth -= damage;
-            movableTargetUnit.statComponent.SetHealth(targetHealth, movableTargetUnit);
+            StatComponent.DamageUnit((MovableUnit)targetUnit, damage);
         }
         //Debug.Log($"OnAttack Event fired and values are {selfId}, {targetId}, {damage}");
+    }
+
+    private void Event_OnProjectileAttack(object[] obj)
+    {
+        ulong selfId = (ulong)obj[0];
+        ulong targetId = (ulong)obj[1];
+        if (selfId == 0 || targetId == 0) return;
+        float damage = (float)obj[2];
+
+        // TODO: possibly add some projectile data so that you can ensure which exact projectile to send
+        Unit selfUnit = UnitManager.Instance.GetUnit(selfId);
+        Unit targetUnit = UnitManager.Instance.GetUnit(targetId);
+        if (selfUnit && selfUnit.GetType() == typeof(MovableUnit) && 
+            targetUnit && targetUnit.GetType() == typeof(MovableUnit))
+        {
+            MovableUnit selfMovableUnit = (MovableUnit)selfUnit;
+            // TODO: use dynamic projectile speed using 
+            float velocitySpeed = 5f;
+            float distance = Vector3.Distance(selfUnit.transform.position, targetUnit.transform.position);
+            float time = distance / velocitySpeed;
+            //float time = 1.0f;
+            // TODO: make it more data based
+            float forwardDistanceOffset = 0.15f;
+            float upwardDistance = 0.25f;
+            Vector3 offset = selfUnit.transform.forward * forwardDistanceOffset + selfUnit.transform.up * upwardDistance;
+            Vector3 startPosition = selfUnit.transform.position + offset;
+            // TODO: make accuracy more data based
+            Vector3 targetPosition = ProjectileUnit.GetInaccurateTarget(startPosition, targetUnit.transform.position, 80, 15);
+            ProjectileUnit projectile = UnitManager.Instance.projectileUnitPool.Get();
+            projectile.LaunchWithVelocity(startPosition, targetPosition, time, selfMovableUnit, damage);
+        }
     }
 
     private void Event_OnDeath(object[] obj)
