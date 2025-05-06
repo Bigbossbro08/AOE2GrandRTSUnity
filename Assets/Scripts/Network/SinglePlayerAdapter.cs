@@ -25,6 +25,6 @@ public class SinglePlayerAdapter : NetworkAdapter
 
     public override void UpdateAdapter()
     {
-
+        // Empty since we resend input anyway
     }
 }

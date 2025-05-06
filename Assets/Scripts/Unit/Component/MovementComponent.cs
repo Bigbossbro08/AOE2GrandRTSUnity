@@ -184,7 +184,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             if (isAutoReversable)
                 yAngle = ShouldMoveForward(transform.localEulerAngles.y, yAngle) ? yAngle : yAngle + 180;
             float rotationDelta = rotationSpeed * deltaTime;
-            transform.localEulerAngles = new Vector3(0, Mathf.LerpAngle(transform.localEulerAngles.y, yAngle, rotationDelta), 0);
+            transform.localEulerAngles = new Vector3(0, Mathf.MoveTowardsAngle(transform.localEulerAngles.y, yAngle, rotationDelta), 0);
         }
     }
 

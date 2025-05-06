@@ -1,4 +1,6 @@
 using Newtonsoft.Json;
+using System;
+using Unity.Mathematics;
 using UnityEngine;
 
 public class CommonStructures
@@ -19,9 +21,12 @@ public class CommonStructures
 
         // Explicit conversion from Vector3 -> SerializableVector3
         public static explicit operator SerializableVector3(Vector3 v) => new SerializableVector3(v.x, v.y, v.z);
+        public static explicit operator SerializableVector3(float3 v) => new SerializableVector3(v.x, v.y, v.z);
 
         // Explicit conversion from SerializableVector3 -> Vector3
         public static explicit operator Vector3(SerializableVector3 v) => new Vector3(v.x, v.y, v.z);
+        public static explicit operator float3(SerializableVector3 v) => new Vector3(v.x, v.y, v.z);
+
     }
 
     [JsonObject(MemberSerialization.OptIn)]

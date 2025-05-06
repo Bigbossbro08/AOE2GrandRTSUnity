@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Unity.VisualScripting;
-using UnityEditor.Experimental.GraphView;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -50,7 +50,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     const float thresholdForTarget = (float)(0.14 * DeterministicUpdateManager.FixedStep);
     const float thresholdForTargetSqr = thresholdForTarget * thresholdForTarget;
 
-    Vector3 targetPosition;
+    float3 targetPosition;
 
     bool IsUpdateable()
     {
@@ -103,9 +103,9 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     Vector3 GetPositionCloseToTarget()
     {
-        Vector3 diff = targetPosition - self.transform.position;
-        float distanceSqr = diff.sqrMagnitude;
-        diff = diff.normalized;
+        float3 diff = targetPosition - (float3)self.transform.position;
+        float distanceSqr = math.lengthsq(diff);
+        diff = math.normalize(diff);
 
         float distance = thresholdForAttackState * .99f;
         //float closeDistance = thresholdForAttackState * .99f;
@@ -188,6 +188,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 break;
             case State.AttackTarget:
                 {
+                    RotateTowardsTarget();
                     if (CanPerformAttack())
                     {
                         PerformAttackAction();
@@ -243,9 +244,9 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             self.movementComponent.StartPathfind(GetPositionCloseToTarget(), true);
         }
 
-        Vector3 newTargetPosition = target.transform.position;
-        Vector3 diff = targetPosition - newTargetPosition;
-        if (diff.sqrMagnitude > thresholdForTargetSqr)
+        float3 newTargetPosition = target.transform.position;
+        float3 diff = targetPosition - newTargetPosition;
+        if (math.lengthsq(diff) > thresholdForTargetSqr)
         {
             Repath(newTargetPosition);
             //targetPosition = newTargetPosition;

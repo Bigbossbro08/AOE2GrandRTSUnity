@@ -224,6 +224,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             movementComponent.OnStopMoving -= MovementComponent_OnStopMoving;
             movementComponent.OnMoving -= MovementComponent_OnMoving;
         }
+        UpdateGridCell();
         UnitManager.Instance.spatialHashGrid.Unregister(this);
     }
 
@@ -362,6 +363,11 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             }
         }
 
+        UpdateGridCell();
+    }
+
+    public void UpdateGridCell()
+    {
         Vector2Int newGridCell = SpatialHashGrid.GetCell(transform.position);
         if (lastGridCell != newGridCell)
         {
