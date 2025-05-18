@@ -23,6 +23,7 @@ public class DeadUnit : Unit, MapLoader.IMapSaveLoad, IDeterministicUpdate
     {
         visualUpdater.SetSpriteName(sprite, true);
         visualUpdater.PlayOrResume(false);
+        visualUpdater.playerId = playerId;
         visualUpdater.RefreshVisuals();
     }
 

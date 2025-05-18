@@ -64,22 +64,24 @@ public class SpritePlayer : MonoBehaviour
             block.SetTexture("_MainTex", spriteFrames[0].texture);
         }
         spriteRenderer.SetPropertyBlock(block);
-        spriteRenderer.flipX = isMirrored;
+        //spriteRenderer.flipX = isMirrored;
         spriteRenderer.sprite = spriteFrames[newFrameID];
     }
 
     void ValidateSprites(bool forceUpdate = false)
     {
-        int newAngle = OpenageSpriteLoader.PredictAngleBasedOnRotation(mainTransform.eulerAngles.y,true);
+        int newAngle = CustomSpriteLoader.GetFixed8DirectionAngle(mainTransform.eulerAngles.y); //OpenageSpriteLoader.PredictAngleBasedOnRotation(mainTransform.eulerAngles.y,true);
         if (currentAngleIndex != newAngle || forceUpdate)
         {
-            isMirrored = OpenageSpriteLoader.CanBeMirrored(mainTransform.eulerAngles.y);
+            //isMirrored = OpenageSpriteLoader.CanBeMirrored(mainTransform.eulerAngles.y);
 
-            OpenageSpriteLoader.ReturnSpriteData spriteData = OpenageSpriteLoader.Instance.RequestSprite(spriteName, mainTransform.eulerAngles.y, true);
-            if (spriteData != null)
-            {
-                spriteFrames = spriteData.sprites;
-            }
+            //OpenageSpriteLoader.ReturnSpriteData spriteData = OpenageSpriteLoader.Instance.RequestSprite(spriteName, mainTransform.eulerAngles.y, true);
+            //if (spriteData != null)
+            //{
+            //    spriteFrames = spriteData.sprites;
+            //}
+
+            CustomSpriteLoader.SpriteReturnData spriteData = CustomSpriteLoader.Instance.LoadSprite(spriteName);
             currentAngleIndex = newAngle;
         }
     }
@@ -122,8 +124,8 @@ public class SpritePlayer : MonoBehaviour
             {
                 spriteRenderer.sprite = spriteFrames[newFrame];
             }
-            isMirrored = OpenageSpriteLoader.CanBeMirrored(mainTransform.eulerAngles.y);
-            spriteRenderer.flipX = isMirrored;
+            //isMirrored = OpenageSpriteLoader.CanBeMirrored(mainTransform.eulerAngles.y);
+            //spriteRenderer.flipX = isMirrored;
         }
     }
 

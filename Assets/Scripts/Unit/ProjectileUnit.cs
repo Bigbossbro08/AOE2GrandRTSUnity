@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using UnityEngine;
-using static UnitManager;
 
 public class ProjectileUnit : Unit, IDeterministicUpdate
 {
@@ -35,7 +34,19 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
             enabled = false;
     }
 
-    public void LaunchWithVelocity(Vector3 start, Vector3 target, float time, MovableUnit sourceUnit = null, float damage = 0.0f)
+    public void SetProjectileData(MovableUnit sourceUnit = null, float damage = 0.0f, string projectileUnitName = null)
+    {
+        float newDamage = damage;
+        if (projectileUnitName != null)
+        {
+            UnitManager.UnitJsonData.ProjectileUnit projectileUnitData = UnitManager.Instance.LoadProjectileJsonData(projectileUnitName);
+            newDamage += projectileUnitData.damage;
+        }
+        this.damage = newDamage;
+        this.sourceUnit = sourceUnit;
+    }
+
+    public void LaunchWithVelocity(Vector3 start, Vector3 target, float time)
     {
         if (!enabled)
         {
@@ -43,8 +54,6 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
         }
         _rigidbody.isKinematic = false;
         _collider.enabled = true;
-        this.damage = damage;
-        this.sourceUnit = sourceUnit;
         transform.position = start;
         Vector3 velocity = CalculateLaunchVelocity(start, target, time);
         _rigidbody.linearVelocity = velocity;

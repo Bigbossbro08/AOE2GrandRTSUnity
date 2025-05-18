@@ -104,20 +104,23 @@ public class UnitEventHandler : MonoBehaviour
             targetUnit && targetUnit.GetType() == typeof(MovableUnit))
         {
             MovableUnit selfMovableUnit = (MovableUnit)selfUnit;
-            // TODO: use dynamic projectile speed using 
-            float velocitySpeed = 5f;
-            float distance = Vector3.Distance(selfUnit.transform.position, targetUnit.transform.position);
-            float time = distance / velocitySpeed;
-            //float time = 1.0f;
-            // TODO: make it more data based
-            float forwardDistanceOffset = 0.15f;
-            float upwardDistance = 0.25f;
-            Vector3 offset = selfUnit.transform.forward * forwardDistanceOffset + selfUnit.transform.up * upwardDistance;
-            Vector3 startPosition = selfUnit.transform.position + offset;
-            // TODO: make accuracy more data based
-            Vector3 targetPosition = ProjectileUnit.GetInaccurateTarget(startPosition, targetUnit.transform.position, 80, 15);
-            ProjectileUnit projectile = UnitManager.Instance.projectileUnitPool.Get();
-            projectile.LaunchWithVelocity(startPosition, targetPosition, time, selfMovableUnit, damage);
+            CombatComponent combatComponent = selfMovableUnit.unitTypeComponent as CombatComponent;
+            if (combatComponent != null)
+            {
+                UnitManager.UnitJsonData.ProjectileUnit projectileUnitData = UnitManager.Instance.LoadProjectileJsonData(combatComponent.projectile_unit);
+                // TODO: use dynamic projectile speed using 
+                float velocitySpeed = (projectileUnitData != null && projectileUnitData.projectile_speed.HasValue) ? projectileUnitData.projectile_speed.Value : 5f;
+                float distance = Vector3.Distance(selfUnit.transform.position, targetUnit.transform.position);
+                float time = distance / velocitySpeed;
+                //float time = 1.0f;
+                // TODO: make it more data based
+                Vector3 startPosition = selfMovableUnit.transform.TransformPoint(combatComponent.projectile_offset != null ? combatComponent.projectile_offset.Value : Vector3.zero);
+                // TODO: make accuracy more data based
+                Vector3 targetPosition = ProjectileUnit.GetInaccurateTarget(startPosition, targetUnit.transform.position, 80, 15);
+                ProjectileUnit projectile = UnitManager.Instance.projectileUnitPool.Get();
+                projectile.SetProjectileData(selfMovableUnit, damage, combatComponent.projectile_unit);
+                projectile.LaunchWithVelocity(startPosition, targetPosition, time);
+            }
         }
     }
 
@@ -130,7 +133,7 @@ public class UnitEventHandler : MonoBehaviour
             MovableUnit movableUnit = (MovableUnit)unit;
             if (movableUnit)
             {
-                UnitManager.MilitaryUnit militaryUnit = UnitManager.Instance.LoadMilitaryUnit(movableUnit.unitDataName);
+                UnitManager.UnitJsonData militaryUnit = UnitManager.Instance.LoadUnitJsonData(movableUnit.unitDataName);
                 movableUnit.ResetUnit();
                 movableUnit.actionComponent.SetActionSprite(militaryUnit.dying, "DeathEndAction");
                 movableUnit.standSprite = militaryUnit.corpse;
@@ -157,10 +160,11 @@ public class UnitEventHandler : MonoBehaviour
                         MovableUnit movableUnit = (MovableUnit)unit;
                         if (movableUnit)
                         {
-                            UnitManager.MilitaryUnit militaryUnit = UnitManager.Instance.LoadMilitaryUnit(movableUnit.unitDataName);
+                            UnitManager.UnitJsonData militaryUnit = UnitManager.Instance.LoadUnitJsonData(movableUnit.unitDataName);
                             movableUnit.walkSprite = militaryUnit.corpse;
                             movableUnit.standSprite = militaryUnit.corpse;
                             DeadUnit deadUnit = UnitManager.Instance.deadUnitPool.Get();
+                            deadUnit.playerId = movableUnit.playerId;
                             deadUnit.transform.position = movableUnit.transform.position;
                             deadUnit.transform.rotation = movableUnit.transform.rotation;
                             deadUnit.unitDataName = movableUnit.unitDataName;

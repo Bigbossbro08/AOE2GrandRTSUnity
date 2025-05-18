@@ -52,15 +52,21 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
     {
         if (spriteName != name || force)
         {
-            OpenageSpriteLoader.ReturnMinimalisticData returnMinimalisticData = OpenageSpriteLoader.Instance.RequestMinimalSpriteData(name);
-            if (returnMinimalisticData != null)
+            //OpenageSpriteLoader.ReturnMinimalisticData returnMinimalisticData = OpenageSpriteLoader.Instance.RequestMinimalSpriteData(name);
+            CustomSpriteLoader.SpriteReturnData spriteReturnData = CustomSpriteLoader.Instance.LoadSprite(name);
+            if (spriteReturnData != null)
             {
-                isLooping = returnMinimalisticData.isLooping;
-                duration = returnMinimalisticData.duration;
-            } else
-            {
-                Debug.LogError("Failed to retrieve minimal sprite data! Determinism is probably failed!");
+                isLooping = spriteReturnData.isLooping;
+                duration = spriteReturnData.duration;
             }
+            //if (returnMinimalisticData != null)
+            //{
+            //    isLooping = returnMinimalisticData.isLooping;
+            //    duration = returnMinimalisticData.duration;
+            //} else
+            //{
+            //    Debug.LogError("Failed to retrieve minimal sprite data! Determinism is probably failed!");
+            //}
             OnSetSpriteNameEvent?.Invoke(name);
         }
         spriteName = name;

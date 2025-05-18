@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Pool;
 using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
@@ -21,26 +22,63 @@ public class PlayerData
 [RequireComponent(typeof(SpatialHashGrid))]
 public class UnitManager : MonoBehaviour
 {
-    public class MilitaryUnit
+    public class UnitJsonData
     {
+        public class ProjectileUnit
+        {
+            [JsonProperty("type")]
+            public string type;
+
+            [JsonProperty("damage")]
+            public float damage = 6.0f;
+
+            [JsonProperty("projectile_speed")]
+            public float? projectile_speed = 5.0f;
+        }
+
         public class CombatActionEvent
         {
             public string eventType;
             public float time;
         }
 
+        [JsonProperty("hp")]
         public float hp = 45.0f;
+
+        [JsonProperty("movement_speed")]
         public float movement_speed = 0.96f;
+
+        [JsonProperty("attack_delay")]
         public float attack_delay = 1.0f;
-        public float attack_range = 0.0f;
+
+        [JsonProperty("attack_range")]
+        public float? attack_range = 0.0f;
 
         [JsonProperty("attack_events")]
         public List<CombatActionEvent> combatActionEvents = new List<CombatActionEvent>();
+
+        [JsonProperty("projectile_offset")]
+        public CommonStructures.SerializableVector3? projectile_offset;
+
+        [JsonProperty("projectile_unit")]
+        public string projectile_unit = "";
+
+        [JsonProperty("damage")]
         public float damage = 6.0f;
+
+        [JsonProperty("standing")]
         public string standing = "archer_standing";
+
+        [JsonProperty("walking")]
         public string walking = "archer_walking";
+
+        [JsonProperty("attacking")]
         public string attacking = "archer_attacking";
+
+        [JsonProperty("dying")]
         public string dying = "archer_dying";
+
+        [JsonProperty("corpse")]
         public string corpse = "archer_corpse";
     }
 
@@ -283,7 +321,7 @@ public class UnitManager : MonoBehaviour
         return null;
     }
 
-    public MilitaryUnit LoadMilitaryUnit(string name)
+    public UnitJsonData LoadUnitJsonData(string name)
     {
         if (!name.StartsWith("military_units\\"))
         {
@@ -291,7 +329,14 @@ public class UnitManager : MonoBehaviour
             return null;
         }
         string jsonPath = Path.Combine(dataPath, name + ".json");
-        MilitaryUnit militaryUnit = JsonConvert.DeserializeObject<MilitaryUnit>(File.ReadAllText(jsonPath));
+        UnitJsonData militaryUnit = JsonConvert.DeserializeObject<UnitJsonData>(File.ReadAllText(jsonPath));
         return militaryUnit;
+    }
+
+    public UnitJsonData.ProjectileUnit LoadProjectileJsonData(string name)
+    {
+        string jsonPath = Path.Combine(dataPath, name + ".json");
+        UnitJsonData.ProjectileUnit projectileUnit = JsonConvert.DeserializeObject<UnitJsonData.ProjectileUnit>(File.ReadAllText(jsonPath));
+        return projectileUnit;
     }
 }

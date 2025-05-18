@@ -16,6 +16,8 @@ public class CombatComponent : UnitTypeComponent, IDeterministicUpdate
     public float attackDelay = 0f;
     public float currentAttackDelay = 0f;
     [SerializeField] public List<ActionComponent.ActionEvent> actionEvents = new List<ActionComponent.ActionEvent>();
+    public Vector3? projectile_offset = null;
+    public string projectile_unit = null;
     public Stance stance;
 
     private void Awake()

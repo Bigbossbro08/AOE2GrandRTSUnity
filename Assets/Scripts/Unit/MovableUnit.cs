@@ -107,7 +107,12 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     void LoadMovableData(string unitDataName, bool callVisualUpdate = false)
     {
-        UnitManager.MilitaryUnit militaryUnit = UnitManager.Instance.LoadMilitaryUnit(unitDataName);
+        UnitManager.UnitJsonData militaryUnit = UnitManager.Instance.LoadUnitJsonData(unitDataName);
+        if (militaryUnit == null)
+        {
+            NativeLogger.Error($"Failed to load unit from data {unitDataName}");
+            return;
+        }
         gameObject.tag = "Military Unit";
         statComponent.SetHealth(militaryUnit.hp);
         standSprite = militaryUnit.standing;
@@ -123,18 +128,23 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         {
             combatComponent.attackSprite = militaryUnit.attacking;
             combatComponent.damage = militaryUnit.damage;
-            combatComponent.attackRange = militaryUnit.attack_range;
+            combatComponent.attackRange = militaryUnit.attack_range == null ? 0.0f : militaryUnit.attack_range.Value;
             combatComponent.attackDelay = militaryUnit.attack_delay;
             combatComponent.actionEvents.Clear();
+            combatComponent.projectile_offset = (Vector3?)militaryUnit.projectile_offset;
+            combatComponent.projectile_unit = militaryUnit.projectile_unit;
 
-            for (int i = 0; i < militaryUnit.combatActionEvents.Count; i++)
+            if (militaryUnit.combatActionEvents != null)
             {
-                UnitManager.MilitaryUnit.CombatActionEvent eventData = militaryUnit.combatActionEvents[i];
-                if (System.Enum.TryParse(eventData.eventType, out UnitEventHandler.EventID eventID))
+                for (int i = 0; i < militaryUnit.combatActionEvents.Count; i++)
                 {
-                    ActionComponent.ActionEvent attackEvent 
-                        = new ActionComponent.ActionEvent(eventData.time, eventID, new List<object>() { id, 0, militaryUnit.damage });
-                    combatComponent.actionEvents.Add(attackEvent);
+                    UnitManager.UnitJsonData.CombatActionEvent eventData = militaryUnit.combatActionEvents[i];
+                    if (System.Enum.TryParse(eventData.eventType, out UnitEventHandler.EventID eventID))
+                    {
+                        ActionComponent.ActionEvent attackEvent
+                            = new ActionComponent.ActionEvent(eventData.time, eventID, new List<object>() { id, 0, militaryUnit.damage });
+                        combatComponent.actionEvents.Add(attackEvent);
+                    }
                 }
             }
         }

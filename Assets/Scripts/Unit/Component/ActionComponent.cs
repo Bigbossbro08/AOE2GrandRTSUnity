@@ -142,10 +142,11 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
     public void StartAction()
     {
         if (enabled) { return; }
-        OpenageSpriteLoader.ReturnMinimalisticData minimalisticData = OpenageSpriteLoader.Instance.RequestMinimalSpriteData(spriteName);
-        if (minimalisticData != null)
+        //OpenageSpriteLoader.ReturnMinimalisticData minimalisticData = OpenageSpriteLoader.Instance.RequestMinimalSpriteData(spriteName);
+        CustomSpriteLoader.SpriteReturnData spriteReturnData = CustomSpriteLoader.Instance.LoadSprite(spriteName);
+        if (spriteReturnData != null)
         {
-            duration = minimalisticData.duration;
+            duration = spriteReturnData.duration;
             enabled = true;
             if (movableUnit)
             {
