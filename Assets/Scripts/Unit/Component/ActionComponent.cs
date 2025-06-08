@@ -80,7 +80,7 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
 
             deterministicVisualUpdater.SetSpriteName(sprite, true);
             deterministicVisualUpdater.PlayOrResume(false);
-            movableUnit.DecrementActionBlock();
+            //movableUnit.DecrementActionBlock();
         }
         enabled = false;
     }
@@ -153,7 +153,7 @@ public class ActionComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IM
                 movableUnit.GetDeterministicVisualUpdater().SetSpriteName(spriteName, true);
                 movableUnit.GetDeterministicVisualUpdater().PlayOrResume(false);
                 currentTime = 0;
-                movableUnit.IncrementActionBlock();
+                //movableUnit.IncrementActionBlock();
             }
         }
     }

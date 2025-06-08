@@ -33,23 +33,11 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     [SerializeField] DeterministicVisualUpdater DeterministicVisualUpdater;
 
-    int actionBlock = 0;
-
     Vector2Int lastGridCell;
 
     public string standSprite = "idle_archer";
 
     public string walkSprite = "move_archer";
-
-    public void IncrementActionBlock()
-    {
-        actionBlock++;
-    }
-
-    public void DecrementActionBlock()
-    {
-        actionBlock--;
-    }
 
     private void Awake()
     {
@@ -266,8 +254,8 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         if (DeterministicVisualUpdater)
         {
             string sprite = standSprite;
-            if (actionBlock > 0)
-                sprite = actionComponent.spriteName;
+            //if (actionBlock > 0)
+            //    sprite = actionComponent.spriteName;
             DeterministicVisualUpdater.SetSpriteName(standSprite, true);
             DeterministicVisualUpdater.PlayOrResume(false);
         }
@@ -377,13 +365,13 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
-        if (actionBlock > 0)
-        {
-            if (movementComponent)
-            {
-                movementComponent.Stop(false);
-            }
-        }
+        //if (actionBlock > 0)
+        //{
+        //    if (movementComponent)
+        //    {
+        //        movementComponent.Stop(false);
+        //    }
+        //}
 
         UpdateGridCell();
     }
