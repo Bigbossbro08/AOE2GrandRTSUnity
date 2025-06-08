@@ -161,7 +161,6 @@ public class CustomSpriteLoader : MonoBehaviour
 
             string pColorPath = Path.Combine(path, $"{file}_p.png");
             Texture2D maskTexture = SpriteImage(pColorPath);
-            Debug.Log($"File name is: {file} Mask texture status: {maskTexture != null}");
             maskTexture.name = $"{file}.png";
             maskTexture.filterMode = FilterMode.Point;
             maskTexture.wrapMode = TextureWrapMode.Clamp;

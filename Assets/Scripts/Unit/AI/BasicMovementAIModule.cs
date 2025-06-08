@@ -11,33 +11,28 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
     }
 
     State currentState;
+    State desiredState;
     MovableUnit self;
     Vector3 position;
-    ulong crowdId;
-    bool isActionLocked = false;
-    bool startedPathfinding = false;
-    bool isMoving = false;
+    Vector3 offset;
+    Vector3? startPosition;
 
     void DoPathfind()
     {
-        self.movementComponent.StartPathfind(position);
+        self.movementComponent.StartPathfind(position, offset: this.offset, startPosition: this.startPosition);
         position = self.movementComponent.GetLastPointInPathfinding();
-        startedPathfinding = true;
     }
 
-    void ChangeState(State newState)
+    void ChangeState(State newState, bool force = false)
     {
-        if (newState == currentState) return;
+        if (newState == currentState && !force) { return; }
+
         // Used for cleaning up
         switch (newState)
         {
             case State.MoveTowardsPoint:
                 {
-                    isActionLocked = self.actionComponent.IsPlayingAction();
-                    if (!isActionLocked)
-                    {
-                        DoPathfind();
-                    }
+                    DoPathfind();
                 }
                 break;
             case State.ReachedDestination:
@@ -56,76 +51,17 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         return StatComponent.IsUnitAliveOrValid(self);
     }
 
+    bool IsUpdateBlockable()
+    {
+        return self.actionComponent.IsPlayingAction();
+    }
+
     void Process_MoveTowardsPoint()
     {
-        if (isActionLocked && !self.actionComponent.IsPlayingAction())
+        if (self.movementComponent.movementState == MovementComponent.State.Idle)
         {
-            DoPathfind();
-            isActionLocked = false;
-            return;
+            SetDesiredState(State.ReachedDestination);
         }
-
-        if (isActionLocked || self.actionComponent.IsPlayingAction())
-        {
-            return;
-        }
-
-        if (startedPathfinding && self.movementComponent.movementState == MovementComponent.State.Moving && !isMoving)
-        {
-            isMoving = true;
-            return;
-        }
-
-        if (isMoving)
-        {
-            // TODO: Make proper solution for stop in group behavior or find better solutions
-            //float radius = self.movementComponent.radius;
-            //var nearbyObjs = UnitManager.Instance.spatialHashGrid.QueryInRadius(transform.position, radius + 0.05f);
-            //foreach (Unit obj in nearbyObjs)
-            //{
-            //    if (obj.gameObject == self.gameObject) continue;
-            //    if (obj.playerId != self.playerId) continue;
-            //
-            //    if (obj.GetType() != typeof(MovableUnit)) continue;
-            //    MovableUnit otherMovableUnit = obj as MovableUnit;
-            //
-            //    if (!otherMovableUnit.aiModule) continue;
-            //    if (otherMovableUnit.aiModule.GetType() != typeof(BasicMovementAIModule)) continue;
-            //
-            //    BasicMovementAIModule otherMovementAiModule = otherMovableUnit.aiModule as BasicMovementAIModule;
-            //    if (otherMovementAiModule.currentState == State.ReachedDestination) continue;
-            //    if (otherMovementAiModule.crowdId != crowdId) continue;
-            //    Vector3 diffToOtherObj = self.transform.position - obj.transform.position;
-            //    float cmpFloat = 2 * radius + 0.05f;
-            //    float cmpSqr = cmpFloat * cmpFloat;
-            //    if (diffToOtherObj.sqrMagnitude < cmpFloat)
-            //    {
-            //        ChangeState(State.ReachedDestination);
-            //        break;
-            //    }
-            //}
-            //if (currentState == State.ReachedDestination) return;
-
-            if (self.movementComponent.movementState == MovementComponent.State.Idle) {
-                ChangeState(State.ReachedDestination);
-            }
-
-            //Vector2 diff = MovementComponent.ToVector2(self.movementComponent.GetLastPointInPathfinding()) - MovementComponent.ToVector2(self.transform.position);
-            //if (diff.sqrMagnitude < 0.0001f)
-            //{
-            //    ChangeState(State.ReachedDestination);
-            //}
-            //else
-            //{
-            //    Debug.Log(diff.sqrMagnitude);
-            //}
-            return;
-        }
-
-        //if (self.movementComponent.movementState == MovementComponent.State.Idle)
-        //{
-        //    ChangeState(State.ReachedDestination);
-        //}
     }
 
     public new void DeterministicUpdate(float deltaTime, ulong tickID)
@@ -134,6 +70,17 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         {
             enabled = false;
             return;
+        }
+
+        if (IsUpdateBlockable())
+        {
+            return;
+        }
+
+        if (currentState != desiredState)
+        {
+            ChangeState(desiredState);
+            currentState = desiredState;
         }
 
         switch (currentState)
@@ -164,9 +111,6 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         DeterministicUpdateManager.Instance.Unregister(this);
         self = null;
         currentState = State.MoveTowardsPoint;
-        isActionLocked = false; 
-        startedPathfinding = false;
-        isMoving = false;
     }
 
     public new void Load(MapLoader.SaveLoadData data)
@@ -184,18 +128,29 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         throw new System.NotImplementedException();
     }
 
-    internal void InitializeAI(MovableUnit self, Vector3 position, ulong crowdId)
+    public void SetDesiredState(State newState, bool force = false)
+    {
+        desiredState = newState;
+
+        if (!IsUpdateBlockable())
+        {
+            ChangeState(desiredState, force);
+            currentState = newState;
+        }
+    }
+
+    internal void InitializeAI(MovableUnit self, Vector3 position, ulong crowdId, Vector3 offset, Vector3? startPosition = null)
     {
         if (StatComponent.IsUnitAliveOrValid(self))
         {
             this.self = self;
             this.position = position;
-            this.crowdId = crowdId;
-            isActionLocked = false;
-            
-            // For hacky trigger rn
+            this.offset = offset;
+            this.startPosition = startPosition;
+            self.movementComponent.crowdID = crowdId;
+
             currentState = State.ReachedDestination;
-            ChangeState(State.MoveTowardsPoint);
+            SetDesiredState(State.MoveTowardsPoint, true);
             enabled = true;
             return;
         }

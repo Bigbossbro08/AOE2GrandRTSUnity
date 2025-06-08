@@ -122,14 +122,40 @@ public class UnitManager : MonoBehaviour
         crowdIDCounter = 0;
 
         //TODO: Make proper player data systerm
-        players.Add(0, new PlayerData(0, Color.white));
-        if (ColorUtility.TryParseHtmlString("#87CEEB", out Color playerOneColor))
+        Color playerColor = Color.white;
+        players.Add(0, new PlayerData(0, playerColor));
+        if (ColorUtility.TryParseHtmlString("#00BFFF", out playerColor))
         {
-            players.Add(1, new PlayerData(1, playerOneColor));
+            players.Add(1, new PlayerData(1, playerColor));
         }
-        if (ColorUtility.TryParseHtmlString("#780606", out Color playerTwoColor))
+        if (ColorUtility.TryParseHtmlString("#FF0000", out playerColor))
         {
-            players.Add(2, new PlayerData(2, playerTwoColor));
+            players.Add(2, new PlayerData(2, playerColor));
+        }
+        if (ColorUtility.TryParseHtmlString("#BFFF00", out playerColor))
+        {
+            players.Add(3, new PlayerData(3, playerColor));
+        }
+        if (ColorUtility.TryParseHtmlString("#FFBF00", out playerColor))
+        {
+            players.Add(4, new PlayerData(4, playerColor));
+        }
+        if (ColorUtility.TryParseHtmlString("#40FF00", out playerColor))
+        {
+            players.Add(5, new PlayerData(5, playerColor));
+        }
+        if (ColorUtility.TryParseHtmlString("#BF00FF", out playerColor))
+        {
+            players.Add(6, new PlayerData(6, playerColor));
+        }
+        if (ColorUtility.TryParseHtmlString("#0080FF", out playerColor))
+        {
+            players.Add(7, new PlayerData(7, playerColor));
+        }
+        if (ColorUtility.TryParseHtmlString("#4000FF", out playerColor))
+        {
+            playerColor = Color.grey;
+            players.Add(8, new PlayerData(8, playerColor));
         }
     }
 

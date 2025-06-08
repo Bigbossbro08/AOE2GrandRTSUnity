@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine.AI;
 using UnityEngine.Rendering;
 using TMPro;
+using static BasicAttackAIModule;
 
 public class MoveUnitCommand : InputCommand {
     public const string commandName = "Move Unit Command";
@@ -33,9 +34,229 @@ public class MoveUnitsCommand : InputCommand
     public List<ulong> unitIDs;
     public Vector3 position;
 
+    public void ArrangeUnits(List<Unit> units, Vector3 position, ulong crowdID)
+    {
+        if (units == null || units.Count == 0) return;
+
+        // Sort by role priority, then width (descending)
+        //var sortedUnits = units.OrderBy(u => GetRolePriority(u.role))
+        //                       .ThenByDescending(u => u.FormationWidth)
+        //                       .ToList();
+        var sortedUnits = units;
+
+        // Direction vectors
+        Vector3 forward = Vector3.forward; //formationDirection.normalized;
+        Vector3 right = Vector3.Cross(Vector3.up, forward);
+
+        float currentX = 0f;
+        float currentZ = 0f;
+        float rowHeight = 0f;
+        float maxWidth = 0f;
+
+        List<Vector3> finalPositions = new List<Vector3>();
+
+        foreach (var unit in sortedUnits)
+        {
+            float unitWidth = 0.14f; //unit.FormationWidth;
+            float unitDepth = 0.14f; //unit.FormationDepth;
+
+            const float interUnitSpacing = 0.1f;
+            const float formationRowDepth = 1.0f;
+            if (currentX + unitWidth > formationRowDepth && currentX != 0)
+            {
+                // Wrap to new row
+                currentX = 0f;
+                currentZ += rowHeight + interUnitSpacing;
+                rowHeight = 0f;
+            }
+
+            Vector3 formationCenter = position;
+
+            Vector3 offset = right * currentX + forward * currentZ;
+            Vector3 worldPos = formationCenter + offset;
+
+            finalPositions.Add(worldPos);
+            currentX += unitWidth + interUnitSpacing;
+            rowHeight = Mathf.Max(rowHeight, unitDepth);
+            maxWidth = Mathf.Max(maxWidth, currentX);
+        }
+
+        // Center entire formation around formationCenter
+        //Vector3 centroidOffset = right * (maxWidth / 2f);
+        //for (int i = 0; i < sortedUnits.Count; i++)
+        //{
+        //    Vector3 pos = finalPositions[i] - centroidOffset;
+        //    sortedUnits[i].transform.position = pos;
+        //    sortedUnits[i].transform.rotation = Quaternion.LookRotation(forward);
+        //}
+        
+        float totalDepth = currentZ + rowHeight; // full Z extent
+        Vector3 offsetCenter = right * (maxWidth / 2f) + forward * (totalDepth / 2f);
+        //Vector3 offsetCenter = right * (maxWidth / 2f);
+        //offsetCenter /= 2;
+
+        ulong newCrowdID = ++UnitManager.crowdIDCounter;
+        for (int i = 0; i < sortedUnits.Count; i++)
+        {
+            var unit = sortedUnits[i];
+            MovableUnit movableUnit = (MovableUnit)unit;
+            MoveToCommand(unit, finalPositions[i] - offsetCenter, newCrowdID);
+        }
+    }
+
+    public void ArrangeUnits_New(List<Unit> units, Vector3 position, ulong crowdID)
+    {
+        if (units == null || units.Count == 0) return;
+
+        ulong newCrowdID = ++UnitManager.crowdIDCounter;
+        //MoveToCommand(units[0], position, newCrowdID);
+        //MovableUnit frontUnit = (MovableUnit)units[0];
+        MinHeap<BasicAttackAIModule.HeapUnitNode> unitHeap = new MinHeap<BasicAttackAIModule.HeapUnitNode>();
+        List<Unit> sortedUnits = new List<Unit>();
+        for (int i = 0; i < units.Count; i++)
+        {
+            float distanceSqr = Vector3.SqrMagnitude(units[i].transform.position -  position);
+            unitHeap.Push(new BasicAttackAIModule.HeapUnitNode(i, distanceSqr));
+        }
+
+        for (int i = 0; i < units.Count; i++)
+        {
+            BasicAttackAIModule.HeapUnitNode unitNode = unitHeap.Pop();
+            Unit unit = units[unitNode.Index];
+            sortedUnits.Add(unit);
+        }
+        const float unitWidth = 0.14f;
+        const float interUnitSpacing = 0.05f;
+        float defaultZ = 0;
+        float currentX = 0;
+        float currentZ = defaultZ;
+
+        List<Vector3> offsets = new List<Vector3> {  };
+        //currentZ -= -(unitWidth + interUnitSpacing);
+        //currentX += (unitWidth + interUnitSpacing);
+        int column = 0;
+        for (int i = 0; i < sortedUnits.Count; i++)
+        {
+            if (column > 5)
+            {
+                column = 0;
+                currentZ = defaultZ;
+                currentX += (unitWidth + interUnitSpacing);
+            }
+            //currentX += -(unitWidth + interUnitSpacing);
+            currentZ += -(unitWidth + interUnitSpacing);
+            offsets.Add(new Vector3(currentX, 0, currentZ));
+            column++;
+        }
+
+        Vector3 centralPosition = sortedUnits[0].transform.position;
+        for (int i = 0; i < sortedUnits.Count; i++)
+        {
+            var unit = sortedUnits[i];
+            MovableUnit movableUnit = (MovableUnit)unit;
+            if (StatComponent.IsUnitAliveOrValid(movableUnit))
+            {
+                //movableUnit.ResetUnit(true);
+                //movableUnit.SetAIModule(UnitAIModule.AIModule.TargetFollowingMovementAIModule, frontUnit, newCrowdID, offsets[i]);
+                MoveToCommand(units[i], position, newCrowdID, offsets[i], centralPosition);
+            }
+        }
+    }
+
+    public static List<List<Unit>> ClusterUnits(List<Unit> units, float clusterRadius)
+    {
+        List<List<Unit>> clusters = new();
+        HashSet<Unit> visited = new();
+
+        foreach (Unit unit in units)
+        {
+            if (visited.Contains(unit)) continue;
+
+            List<Unit> cluster = new();
+            Queue<Unit> queue = new();
+            queue.Enqueue(unit);
+            visited.Add(unit);
+
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                cluster.Add(current);
+
+                foreach (var other in units)
+                {
+                    if (!visited.Contains(other) &&
+                        Vector3.Distance(current.transform.position, other.transform.position) < clusterRadius)
+                    {
+                        queue.Enqueue(other);
+                        visited.Add(other);
+                    }
+                }
+            }
+
+            clusters.Add(cluster);
+        }
+
+        return clusters;
+    }
+
+    void MoveToCommand(Unit unit, Vector3 position, ulong newCrowdID, Vector3 offset = default, Vector3? startPosition = null)
+    {
+        MovableUnit movableUnit = (MovableUnit)unit;
+        if (StatComponent.IsUnitAliveOrValid(movableUnit))
+        {
+            movableUnit.ResetUnit(true);
+            movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID, offset, startPosition);
+        }
+    }
+
+    //void MoveUnitsInFormation()
+    //{
+    //    List<Unit> units = new List<Unit>();
+    //    int unitCount = unitIDs.Count;
+    //    for (int i = 0; i < unitCount; i++)
+    //    {
+    //        Unit unit = UnitManager.Instance.GetUnit(unitIDs[i]);
+    //        units.Add(unit);
+    //    }
+    //    ArrangeUnits(units);
+    //}
+
+    public void MoveUnitsToTargetInFormation(Vector3 destination, List<Unit> units)
+    {
+        List<List<Unit>> clusters = ClusterUnits(units, 5f); // 5 units apart same formation
+
+        foreach (var cluster in clusters)
+        {
+            ulong newCrowdID = ++UnitManager.crowdIDCounter;
+            if (cluster.Count == 1)
+            {
+                // Move alone
+                MoveToCommand(cluster[0], destination, newCrowdID);
+            }
+            else
+            {
+                // Formation move
+                ArrangeUnits_New(cluster, destination, newCrowdID);
+                //ArrangeClusterFormation(destination, cluster);
+            }
+        }
+    }
     public void Execute()
     {
+        List<Unit> units = new List<Unit>();
+
         int unitCount = unitIDs.Count;
+        for (int i = 0; i < unitCount; i++)
+        {
+            Unit unit = UnitManager.Instance.GetUnit(unitIDs[i]);
+            if (unit && unit.GetType() == typeof(MovableUnit))
+            {
+                units.Add(unit);
+            }
+        }
+        MoveUnitsToTargetInFormation(position, units);
+
+        return;
 
         int gridSize = Mathf.CeilToInt(Mathf.Sqrt(unitCount)); // Define grid size
         float spacing = 0.6f; // Distance between units
@@ -407,22 +628,10 @@ public class SelectionController : MonoBehaviour
                     }
                     else
                     {
-                        //if (u.GetType() == typeof (MovableUnit))
-                        //{
-                        //    MoveUnitCommand moveUnitCommand = new MoveUnitCommand();
-                        //    moveUnitCommand.action = MoveUnitCommand.commandName;
-                        //    moveUnitCommand.unitID = u.GetUnitID();
-                        //    moveUnitCommand.position = hit.point;
-                        //    InputManager.Instance.SendInputCommand(moveUnitCommand);
-                        //}
                         if (u.GetType() == typeof (MovableUnit))
                         {
-                            //MoveUnitCommand moveUnitCommand = new MoveUnitCommand();
-                            //moveUnitCommand.action = MoveUnitCommand.commandName;
-                            //moveUnitCommand.unitID = u.GetUnitID();
-                            //moveUnitCommand.position = hit.point;
-                            //InputManager.Instance.SendInputCommand(moveUnitCommand);
-                            ids.Add(u.GetUnitID());
+                            if (u.playerId == 1)
+                                ids.Add(u.GetUnitID());
                         }
                     }
                 }

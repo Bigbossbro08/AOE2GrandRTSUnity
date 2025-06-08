@@ -240,7 +240,8 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
         void Repath(Vector3 newTargetPosition)
         {
-            targetPosition = newTargetPosition;
+            ulong newCrowdID = ++UnitManager.crowdIDCounter;
+            self.movementComponent.crowdID = newCrowdID;   targetPosition = newTargetPosition;
             self.movementComponent.StartPathfind(GetPositionCloseToTarget(), true);
         }
 

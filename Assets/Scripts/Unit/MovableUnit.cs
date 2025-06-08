@@ -90,9 +90,21 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 {
                     Vector3 position = (Vector3)aiArgs[0];
                     ulong crowdId = (ulong)aiArgs[1];
-
+                    Vector3 offset = Vector3.zero;
+                    if (aiArgs.Length >= 3)
+                        offset = (Vector3)aiArgs[2];
+                    Vector3? startPosition = (Vector3)aiArgs[3];
                     BasicMovementAIModule basicMovementAIModule = (BasicMovementAIModule)aiModule;
-                    basicMovementAIModule.InitializeAI(this, position, crowdId);
+                    basicMovementAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
+                }
+                break;
+            case UnitAIModule.AIModule.TargetFollowingMovementAIModule:
+                {
+                    TargetFollowingMovementAIModule targetFollowingMovementAIModule = (TargetFollowingMovementAIModule)aiModule;
+                    MovableUnit target = (MovableUnit)aiArgs[0];
+                    ulong crowdId = (ulong)aiArgs[1];
+                    Vector3 offset = (Vector3)aiArgs[2];
+                    targetFollowingMovementAIModule.InitializeAI(this, target, crowdId, offset);
                 }
                 break;
             default:
