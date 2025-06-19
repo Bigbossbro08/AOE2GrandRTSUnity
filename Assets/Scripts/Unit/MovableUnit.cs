@@ -71,7 +71,12 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                     BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
                     MovableUnit target = (MovableUnit)aiArgs[0];
                     bool autoSearchable = (bool)aiArgs[1];
-                    basicAttackAIModule.InitializeAI(this, target, autoSearchable);
+                    bool isTargeted = false;
+                    if (aiArgs.Length >= 3)
+                    {
+                        isTargeted = (bool)aiArgs[2];
+                    }
+                    basicAttackAIModule.InitializeAI(this, target, autoSearchable, isTargeted);
                 }
                 break;
             case UnitAIModule.AIModule.BasicMovementAIModule:
@@ -79,9 +84,16 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                     Vector3 position = (Vector3)aiArgs[0];
                     ulong crowdId = (ulong)aiArgs[1];
                     Vector3 offset = Vector3.zero;
-                    if (aiArgs.Length >= 3)
+                    Vector3? startPosition = null;
+                    if (aiArgs.Length == 3)
+                    {
                         offset = (Vector3)aiArgs[2];
-                    Vector3? startPosition = (Vector3)aiArgs[3];
+                    }
+                    if (aiArgs.Length == 4)
+                    {
+                        offset = (Vector3)aiArgs[2];
+                        startPosition = (Vector3)aiArgs[3];
+                    }
                     BasicMovementAIModule basicMovementAIModule = (BasicMovementAIModule)aiModule;
                     basicMovementAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
                 }
@@ -93,6 +105,25 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                     ulong crowdId = (ulong)aiArgs[1];
                     Vector3 offset = (Vector3)aiArgs[2];
                     targetFollowingMovementAIModule.InitializeAI(this, target, crowdId, offset);
+                }
+                break;
+            case UnitAIModule.AIModule.AttackMoveAIModule:
+                {
+                    Vector3 position = (Vector3)aiArgs[0];
+                    ulong crowdId = (ulong)aiArgs[1];
+                    Vector3 offset = Vector3.zero;
+                    Vector3? startPosition = null;
+                    if (aiArgs.Length == 3)
+                    {
+                        offset = (Vector3)aiArgs[2];
+                    }
+                    if (aiArgs.Length == 4)
+                    {
+                        offset = (Vector3)aiArgs[2];
+                        startPosition = (Vector3)aiArgs[3];
+                    }
+                    AttackMoveAIModule attackMoveAIModule = (AttackMoveAIModule)aiModule;
+                    attackMoveAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
                 }
                 break;
             default:
@@ -123,11 +154,16 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             movementComponent.movementSpeed = militaryUnit.movement_speed;
         }
 
+        UnitManager.UnitJsonData.DamageData damageData = militaryUnit.damageData;
+        if (statComponent)
+        {
+            statComponent.damageData = damageData;
+        }
+
         CombatComponent combatComponent = unitTypeComponent as CombatComponent;
         if (combatComponent)
         {
             combatComponent.attackSprite = militaryUnit.attacking;
-            combatComponent.damage = militaryUnit.damage;
             combatComponent.attackRange = militaryUnit.attack_range == null ? 0.0f : militaryUnit.attack_range.Value;
             combatComponent.attackDelay = militaryUnit.attack_delay;
             combatComponent.actionEvents.Clear();
@@ -141,9 +177,17 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                     UnitManager.UnitJsonData.CombatActionEvent eventData = militaryUnit.combatActionEvents[i];
                     if (System.Enum.TryParse(eventData.eventType, out UnitEventHandler.EventID eventID))
                     {
-                        ActionComponent.ActionEvent attackEvent
-                            = new ActionComponent.ActionEvent(eventData.time, eventID, new List<object>() { id, 0, militaryUnit.damage });
-                        combatComponent.actionEvents.Add(attackEvent);
+                        switch (eventID)
+                        {
+                            case UnitEventHandler.EventID.OnAttack:
+                            case UnitEventHandler.EventID.OnProjectileAttack:
+                                {
+                                    ActionComponent.ActionEvent attackEvent
+                                        = new ActionComponent.ActionEvent(eventData.time, eventID, new List<object>() { id, 0, damageData });
+                                    combatComponent.actionEvents.Add(attackEvent);
+                                }
+                                break;
+                        }
                     }
                 }
             }
@@ -183,11 +227,11 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         }
     }
 
-    public void ResetUnit(bool avoidActionReset = false)
+    public void ResetUnit(bool avoidActionReset = false, bool stopPhysicsToo = false)
     {
         if (movementComponent)
         {
-            movementComponent.Stop();
+            movementComponent.Stop(stopPhysicsToo);
             movementComponent.SetTargetToIgnore(null);
         }
         if (actionComponent)

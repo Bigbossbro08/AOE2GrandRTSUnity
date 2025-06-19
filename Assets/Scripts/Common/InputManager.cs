@@ -41,18 +41,22 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
         //DeterministicUpdateManager.Instance.Unregister(this);
         networkAdapter.OnCommandReceived -= QueueInput;
     }
-
-    private void Update()
+    
+    /// <summary>
+     /// Call this every frame, even when paused.
+     /// </summary>
+    public void NetworkTick()
     {
         networkAdapter.UpdateAdapter();
+        // you could also send KeepAlive here if you like
     }
 
-    public void SendInputCommand(InputCommand command)
-    {
-        command.frame = DeterministicUpdateManager.Instance.tickCount + (ulong)networkAdapter.GetDelay();
-        //QueueInput(command);
-        networkAdapter.SendCommand(command);
-    }
+    //public void SendInputCommand(InputCommand command)
+    //{
+    //    command.frame = DeterministicUpdateManager.Instance.tickCount + (ulong)networkAdapter.GetDelay();
+    //    //QueueInput(command);
+    //    networkAdapter.SendCommand(command);
+    //}
 
     public void QueueInput(InputCommand command)
     {
@@ -64,21 +68,27 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
         //Debug.Log($"Received and added new command for {command.frame}");
         queuedCommands[command.frame].Add(command); 
         
-        if (DeterministicUpdateManager.Instance.IsPaused()) // Check if paused
+        if (DeterministicUpdateManager.Instance.IsPaused())
         {
-            DeterministicUpdateManager.Instance.Resume(); // Re-enable ticking
+            // Simulate minimal ticking just to process input
+            // DeterministicUpdate(DeterministicUpdateManager.FixedStep, DeterministicUpdateManager.Instance.tickCount);
+            DeterministicUpdateManager.Instance.Resume();
         }
     }
 
     private void ProcessCommandsForFrame(ulong frame)
     {
         ulong timeoutTicks = (ulong)networkAdapter.GetDelay();
-        //Debug.LogWarning($"timeout delay: {timeoutTicks}, frame id: {frame} and last received tick: {lastReceivedTick}");
+        NativeLogger.Log($"timeout delay: {timeoutTicks}, frame id: {frame} and last received tick: {lastReceivedTick}");
         if (!queuedCommands.TryGetValue(frame, out var commands))
         {
-            if (frame - lastReceivedTick > timeoutTicks)
+            // compute signed difference
+            long diff = (long)frame - (long)lastReceivedTick;
+
+            // only pause if lastReceivedTick was truly older and beyond timeout
+            if (diff > (long)timeoutTicks)
             {
-                DeterministicUpdateManager.Instance.Pause(); // Disable ticking
+                DeterministicUpdateManager.Instance.Pause();
             }
             return;
         }
@@ -124,18 +134,51 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
                     attackUnitCommand.Execute();
                 }
                 break;
+            case DeleteUnitsCommand.commandName:
+                {
+                    DeleteUnitsCommand deleteUnitsCommand = command as DeleteUnitsCommand;
+                    deleteUnitsCommand.Execute();
+                }
+                break;
+            case PauseGameCommand.commandName:
+                {
+                    PauseGameCommand pauseGameCommand = command as PauseGameCommand;
+                    pauseGameCommand.Execute();
+                }
+                break;
+            case ResumeGameCommand.commandName:
+                {
+                    ResumeGameCommand resumeGameCommand = command as ResumeGameCommand;
+                    resumeGameCommand.Execute();
+                }
+                break;
         }
+    }
+
+    public void SendInputCommand(InputCommand command)
+    {
+        NativeLogger.Log($"Command type recieved was: {command.action}");
+        if (command.action == ResumeGameCommand.commandName)
+        {
+            // execute on the same frame
+            command.frame = DeterministicUpdateManager.Instance.tickCount;
+        }
+        else
+        {
+            // normal gameplay commands still use delayed scheduling
+            command.frame = DeterministicUpdateManager.Instance.tickCount
+                          + (ulong)networkAdapter.GetDelay();
+        }
+
+        networkAdapter.SendCommand(command);
     }
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
         ProcessCommandsForFrame(tickID);
 
-        InputCommand keepAlive = new InputCommand
-        {
-            playerID = -1, // System command
-            action = "KeepAlive"
-        };
+        // KeepAlive so you don’t time out while paused
+        var keepAlive = new InputCommand { playerID = -1, action = "KeepAlive" };
         SendInputCommand(keepAlive);
     }
 }

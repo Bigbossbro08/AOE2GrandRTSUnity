@@ -4,6 +4,10 @@ using UnityEngine.AI;
 using UnityEngine.Rendering;
 using TMPro;
 using static BasicAttackAIModule;
+using static UnityEngine.Rendering.DebugUI.Table;
+using Unity.VisualScripting;
+using static Utilities;
+using System.Linq;
 
 public class MoveUnitCommand : InputCommand {
     public const string commandName = "Move Unit Command";
@@ -33,132 +37,68 @@ public class MoveUnitsCommand : InputCommand
     public const string commandName = "Move Units Command";
     public List<ulong> unitIDs;
     public Vector3 position;
-
-    public void ArrangeUnits(List<Unit> units, Vector3 position, ulong crowdID)
-    {
-        if (units == null || units.Count == 0) return;
-
-        // Sort by role priority, then width (descending)
-        //var sortedUnits = units.OrderBy(u => GetRolePriority(u.role))
-        //                       .ThenByDescending(u => u.FormationWidth)
-        //                       .ToList();
-        var sortedUnits = units;
-
-        // Direction vectors
-        Vector3 forward = Vector3.forward; //formationDirection.normalized;
-        Vector3 right = Vector3.Cross(Vector3.up, forward);
-
-        float currentX = 0f;
-        float currentZ = 0f;
-        float rowHeight = 0f;
-        float maxWidth = 0f;
-
-        List<Vector3> finalPositions = new List<Vector3>();
-
-        foreach (var unit in sortedUnits)
-        {
-            float unitWidth = 0.14f; //unit.FormationWidth;
-            float unitDepth = 0.14f; //unit.FormationDepth;
-
-            const float interUnitSpacing = 0.1f;
-            const float formationRowDepth = 1.0f;
-            if (currentX + unitWidth > formationRowDepth && currentX != 0)
-            {
-                // Wrap to new row
-                currentX = 0f;
-                currentZ += rowHeight + interUnitSpacing;
-                rowHeight = 0f;
-            }
-
-            Vector3 formationCenter = position;
-
-            Vector3 offset = right * currentX + forward * currentZ;
-            Vector3 worldPos = formationCenter + offset;
-
-            finalPositions.Add(worldPos);
-            currentX += unitWidth + interUnitSpacing;
-            rowHeight = Mathf.Max(rowHeight, unitDepth);
-            maxWidth = Mathf.Max(maxWidth, currentX);
-        }
-
-        // Center entire formation around formationCenter
-        //Vector3 centroidOffset = right * (maxWidth / 2f);
-        //for (int i = 0; i < sortedUnits.Count; i++)
-        //{
-        //    Vector3 pos = finalPositions[i] - centroidOffset;
-        //    sortedUnits[i].transform.position = pos;
-        //    sortedUnits[i].transform.rotation = Quaternion.LookRotation(forward);
-        //}
-        
-        float totalDepth = currentZ + rowHeight; // full Z extent
-        Vector3 offsetCenter = right * (maxWidth / 2f) + forward * (totalDepth / 2f);
-        //Vector3 offsetCenter = right * (maxWidth / 2f);
-        //offsetCenter /= 2;
-
-        ulong newCrowdID = ++UnitManager.crowdIDCounter;
-        for (int i = 0; i < sortedUnits.Count; i++)
-        {
-            var unit = sortedUnits[i];
-            MovableUnit movableUnit = (MovableUnit)unit;
-            MoveToCommand(unit, finalPositions[i] - offsetCenter, newCrowdID);
-        }
-    }
+    public bool IsAttackMove = false;
 
     public void ArrangeUnits_New(List<Unit> units, Vector3 position, ulong crowdID)
     {
         if (units == null || units.Count == 0) return;
 
         ulong newCrowdID = ++UnitManager.crowdIDCounter;
-        //MoveToCommand(units[0], position, newCrowdID);
-        //MovableUnit frontUnit = (MovableUnit)units[0];
-        MinHeap<BasicAttackAIModule.HeapUnitNode> unitHeap = new MinHeap<BasicAttackAIModule.HeapUnitNode>();
-        List<Unit> sortedUnits = new List<Unit>();
-        for (int i = 0; i < units.Count; i++)
-        {
-            float distanceSqr = Vector3.SqrMagnitude(units[i].transform.position -  position);
-            unitHeap.Push(new BasicAttackAIModule.HeapUnitNode(i, distanceSqr));
-        }
 
-        for (int i = 0; i < units.Count; i++)
-        {
-            BasicAttackAIModule.HeapUnitNode unitNode = unitHeap.Pop();
-            Unit unit = units[unitNode.Index];
-            sortedUnits.Add(unit);
-        }
+        // 1. Build formation positions
         const float unitWidth = 0.14f;
-        const float interUnitSpacing = 0.05f;
-        float defaultZ = 0;
-        float currentX = 0;
-        float currentZ = defaultZ;
+        const float interUnitSpacing = 0.14f;
+        float spacing = unitWidth + interUnitSpacing;
+        int totalUnits = units.Count;
+        int columns = Mathf.CeilToInt(Mathf.Sqrt(totalUnits));
+        List<Vector3> formationOffsets = new List<Vector3>();
 
-        List<Vector3> offsets = new List<Vector3> {  };
-        //currentZ -= -(unitWidth + interUnitSpacing);
-        //currentX += (unitWidth + interUnitSpacing);
-        int column = 0;
-        for (int i = 0; i < sortedUnits.Count; i++)
+        Vector3 center = Vector3.zero;
+        for (int i = 0; i < totalUnits; i++)
         {
-            if (column > 5)
-            {
-                column = 0;
-                currentZ = defaultZ;
-                currentX += (unitWidth + interUnitSpacing);
-            }
-            //currentX += -(unitWidth + interUnitSpacing);
-            currentZ += -(unitWidth + interUnitSpacing);
-            offsets.Add(new Vector3(currentX, 0, currentZ));
-            column++;
+            float row = Mathf.Floor(i / (float)columns);
+            float col = i % columns;
+
+            float unitsInRow = Mathf.Min(columns, totalUnits - row * columns);
+            float totalRowWidth = (unitsInRow - 1) * spacing;
+            float offsetX = -totalRowWidth / 2f;
+
+            float x = col * spacing + offsetX;
+            float z = row * spacing;
+
+            formationOffsets.Add(new Vector3(x, 0, -z)); // negative z for forward
+            center += units[i].transform.position;
         }
 
-        Vector3 centralPosition = sortedUnits[0].transform.position;
-        for (int i = 0; i < sortedUnits.Count; i++)
+        center /= totalUnits;
+
+        // 2. Build cost matrix
+        float[,] costMatrix = new float[totalUnits, totalUnits];
+        for (int i = 0; i < totalUnits; i++)
         {
-            var unit = sortedUnits[i];
+            Vector3 unitPos = units[i].transform.position;
+            for (int j = 0; j < totalUnits; j++)
+            {
+                Vector3 targetPos = position + formationOffsets[j];
+                costMatrix[i, j] = Vector3.SqrMagnitude(unitPos - targetPos); // Use squared for performance
+            }
+        }
+
+        // 3. Solve assignment
+        List<int> assignment = HungarianAlgorithm.Solve(costMatrix).ToList();
+        assignment.Reverse();
+
+        // 4. Issue move commands
+        Vector3 startPathfindingPostion = units[0].transform.position;
+        for (int i = 0; i < totalUnits; i++)
+        {
+            Unit unit = units[i];
             MovableUnit movableUnit = (MovableUnit)unit;
             if (StatComponent.IsUnitAliveOrValid(movableUnit))
             {
-                //movableUnit.ResetUnit(true);
-                //movableUnit.SetAIModule(UnitAIModule.AIModule.TargetFollowingMovementAIModule, frontUnit, newCrowdID, offsets[i]);
-                MoveToCommand(units[i], position, newCrowdID, offsets[i], centralPosition);
+                int assignedIndex = assignment[i];
+                Vector3 offset = formationOffsets[assignedIndex];
+                MoveToCommand(unit, position, newCrowdID, offset, center);
             }
         }
     }
@@ -205,21 +145,15 @@ public class MoveUnitsCommand : InputCommand
         if (StatComponent.IsUnitAliveOrValid(movableUnit))
         {
             movableUnit.ResetUnit(true);
-            movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID, offset, startPosition);
+            if (startPosition == null)
+            {
+                startPosition = unit.transform.position;
+            }
+            movableUnit.SetAIModule(IsAttackMove ? UnitAIModule.AIModule.AttackMoveAIModule : UnitAIModule.AIModule.BasicMovementAIModule, 
+                position, newCrowdID, offset, startPosition);
+            //movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID);
         }
     }
-
-    //void MoveUnitsInFormation()
-    //{
-    //    List<Unit> units = new List<Unit>();
-    //    int unitCount = unitIDs.Count;
-    //    for (int i = 0; i < unitCount; i++)
-    //    {
-    //        Unit unit = UnitManager.Instance.GetUnit(unitIDs[i]);
-    //        units.Add(unit);
-    //    }
-    //    ArrangeUnits(units);
-    //}
 
     public void MoveUnitsToTargetInFormation(Vector3 destination, List<Unit> units)
     {
@@ -257,45 +191,6 @@ public class MoveUnitsCommand : InputCommand
         MoveUnitsToTargetInFormation(position, units);
 
         return;
-
-        int gridSize = Mathf.CeilToInt(Mathf.Sqrt(unitCount)); // Define grid size
-        float spacing = 0.6f; // Distance between units
-        int lastRowCount = unitCount % gridSize; // Units in the last row
-
-        ulong newCrowdID = ++UnitManager.crowdIDCounter;
-
-        for (int i = 0; i < unitCount; i++)
-        {
-            Unit unit = UnitManager.Instance.GetUnit(unitIDs[i]);
-            if (unit)
-            {
-                int row = i / gridSize;
-                int col = i % gridSize;
-
-                // Handle last row centering
-                if (row == unitCount / gridSize && lastRowCount != 0)
-                {
-                    float lastRowOffset = ((gridSize - lastRowCount) * spacing) / 2;
-                    col += Mathf.FloorToInt(lastRowOffset / spacing); // Shift towards center
-                }
-                // Center the entire grid around targetPosition
-                Vector3 gridCenterOffset = new Vector3((gridSize - 1) * spacing / 2, 0, (gridSize - 1) * spacing / 2);
-
-                Vector3 offset = new Vector3(col * spacing, 0, row * spacing) -
-                                 new Vector3(gridSize * spacing / 2, 0, gridSize * spacing / 2);
-
-                Vector3 unitTarget = position + gridCenterOffset + offset;
-
-                MovableUnit movableUnit = (MovableUnit)unit;
-                if (StatComponent.IsUnitAliveOrValid(movableUnit))
-                {
-                    movableUnit.ResetUnit(true);
-                    movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, unitTarget, newCrowdID);
-                    //movableUnit.movementComponent.StartPathfind(unitTarget);
-                    //movableUnit.movementComponent.crowdID = newCrowdID;
-                }
-            }
-        }
     }
 }
 
@@ -312,6 +207,51 @@ public class MoveShipUnitCommand : InputCommand
         {
             ShipUnit shipUnit = (ShipUnit)unit;
             shipUnit.StartPathfind(position);
+        }
+    }
+}
+
+public class PauseGameCommand : InputCommand
+{
+    public const string commandName = "Pause Game Command";
+
+    public void Execute()
+    {
+        if (!DeterministicUpdateManager.Instance.IsPaused())
+        {
+            DeterministicUpdateManager.Instance.Pause();
+        }
+    }
+}
+
+public class ResumeGameCommand : InputCommand
+{
+    public const string commandName = "Resume Game Command";
+
+    public void Execute()
+    {
+        if (DeterministicUpdateManager.Instance.IsPaused())
+        {
+            DeterministicUpdateManager.Instance.Resume();
+        }
+    }
+}
+
+public class DeleteUnitsCommand : InputCommand
+{
+    public const string commandName = "Delete Units Command";
+    public List<ulong> unitIDs;
+
+    public void Execute()
+    {
+        foreach (ulong unitID in unitIDs)
+        {
+            Unit unit = UnitManager.Instance.GetUnit(unitID);
+            MovableUnit movableUnit = (MovableUnit)unit;
+            if (movableUnit && StatComponent.IsUnitAliveOrValid(movableUnit))
+            {
+                StatComponent.KillUnit(movableUnit);
+            }
         }
     }
 }
@@ -358,16 +298,7 @@ public class AttackUnitCommand : InputCommand
                 {
                     movableUnit.ResetUnit(true);
                     ulong newCrowdID = ++UnitManager.crowdIDCounter;
-                    movableUnit.SetAIModule(UnitAIModule.AIModule.BasicAttackAIModule, movableTargetUnit, true);
-                    //BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)movableUnit.aiModule;
-                    //if (basicAttackAIModule)
-                    //{
-                    //    movableUnit.ResetUnit();
-                    //    basicAttackAIModule.InitializeAI(movableUnit, movableTargetUnit);
-                    //    ulong newCrowdID = ++UnitManager.crowdIDCounter;
-                    //    movableUnit.movementComponent.crowdID = newCrowdID;
-                    //    Debug.Log("Executing attack");
-                    //}
+                    movableUnit.SetAIModule(UnitAIModule.AIModule.BasicAttackAIModule, movableTargetUnit, true, true);
                 }
             }
         }
@@ -402,11 +333,26 @@ public class SelectionController : MonoBehaviour
     void Start()
     {
         wallBuilder = GetComponent<WallBuilder>();
-        //testCube = GameObject.CreatePrimitive(PrimitiveType.Cube);
     }
 
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.F3))
+        {
+            if (DeterministicUpdateManager.Instance.IsPaused())
+            {
+                ResumeGameCommand resumeGameCommand = new ResumeGameCommand();
+                resumeGameCommand.action = ResumeGameCommand.commandName;
+                InputManager.Instance.SendInputCommand(resumeGameCommand);
+            }
+            else
+            {
+                PauseGameCommand pauseGameCommand = new PauseGameCommand();
+                pauseGameCommand.action = PauseGameCommand.commandName;
+                InputManager.Instance.SendInputCommand(pauseGameCommand);
+            }
+        }
+
         if (Input.GetKeyDown(KeyCode.Alpha1))
         {
             wallHitTest = !wallHitTest;
@@ -505,10 +451,6 @@ public class SelectionController : MonoBehaviour
                 moveShipToDockCommand.targetToDock = positionPair[0];
                 InputManager.Instance.SendInputCommand(moveShipToDockCommand);
             }
-            //if (NavMesh.SamplePosition(hitPoint, out NavMeshHit navHit, 2, 1 << 3))
-            //{
-            //    DebugExtension.DebugWireSphere(navHit.position, Color.yellow, 1f, 5.0f);
-            //}
 
             StopShoreMode();
             return;
@@ -605,6 +547,29 @@ public class SelectionController : MonoBehaviour
             }
         }
 
+        if (Input.GetKeyDown(KeyCode.Delete))
+        {
+            List<ulong> ids = new List<ulong>();
+            foreach (Unit u in selectedUnits)
+            {
+                if (u.GetType() == typeof(MovableUnit))
+                {
+                    if (u.playerId == 1)
+                        ids.Add(u.GetUnitID());
+                }
+            }
+
+
+            if (ids.Count > 1)
+            {
+                DeleteUnitsCommand deleteUnitsCommand = new DeleteUnitsCommand();
+                deleteUnitsCommand.action = DeleteUnitsCommand.commandName;
+                deleteUnitsCommand.unitIDs = new List<ulong>();
+                deleteUnitsCommand.unitIDs.AddRange(ids);
+                InputManager.Instance.SendInputCommand(deleteUnitsCommand);
+            }
+        }
+
         if (Input.GetMouseButtonDown(1))
         {
             if (navalFocusSelect)
@@ -652,6 +617,7 @@ public class SelectionController : MonoBehaviour
                         moveUnitsCommand.unitIDs = new List<ulong>();
                         moveUnitsCommand.unitIDs.AddRange(ids);
                         moveUnitsCommand.position = hit.point;
+                        moveUnitsCommand.IsAttackMove = true;
                         InputManager.Instance.SendInputCommand(moveUnitsCommand);
                     } else if (ids.Count == 1)
                     {
@@ -873,22 +839,6 @@ public class SelectionController : MonoBehaviour
         DrawScreenRect(new Rect(rect.xMin, rect.yMax - thickness, rect.width, thickness), color); // Bottom
         DrawScreenRect(new Rect(rect.xMin, rect.yMin, thickness, rect.height), color); // Left
         DrawScreenRect(new Rect(rect.xMax - thickness, rect.yMin, thickness, rect.height), color); // Right
-    }
-
-    private void OnDrawGizmos()
-    {
-        // Box Selection Debugging
-        //if (isDragging)
-        //{
-        //    Gizmos.color = Color.cyan;
-        //    Vector3[] corners = GetWorldSelectionBoxCorners(startScreenPos, endScreenPos);
-        //
-        //    // Draw selection box edges
-        //    Gizmos.DrawLine(corners[0], corners[1]);
-        //    Gizmos.DrawLine(corners[1], corners[3]);
-        //    Gizmos.DrawLine(corners[3], corners[2]);
-        //    Gizmos.DrawLine(corners[2], corners[0]);
-        //}
     }
 
     void DrawScreenRect(Rect rect, Color color)

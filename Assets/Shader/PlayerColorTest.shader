@@ -9,11 +9,18 @@ Shader "Custom/PlayerColorTest"
     }
     SubShader
     {
-        Tags { 
-            "RenderType"="Transparent" 
-            "Queue"="Transparent" 
+        //Tags { 
+        //    "RenderType"="Transparent" 
+        //    "Queue"="Transparent" 
+        //    "RenderPipeline"="UniversalRenderPipeline" 
+        //}
+        Tags {
+            "Queue"= "Transparent"//"AlphaTest" // or Transparent+10
+            "RenderType"="Transparent"
             "RenderPipeline"="UniversalRenderPipeline" 
         }
+        ZWrite On
+        ZTest LEqual
 
         Pass
         {
@@ -28,12 +35,16 @@ Shader "Custom/PlayerColorTest"
             #pragma vertex vert
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/DeclareDepthTexture.hlsl"
 
             TEXTURE2D(_MainTex);
             SAMPLER(sampler_MainTex);
             TEXTURE2D(_MaskTex);
             SAMPLER(sampler_MaskTex);
             float4 _PlayerColor;
+            //TEXTURE2D(_CameraDepthTexture);
+            //SAMPLER(sampler_CameraDepthTexture);
 
             struct Attributes
             {
@@ -115,7 +126,8 @@ Shader "Custom/PlayerColorTest"
             {
                 float4 baseColor = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, IN.uv);
                 float mask = SAMPLE_TEXTURE2D(_MaskTex, sampler_MaskTex, IN.uv).a;
-
+            
+                // Player mask coloring (your original logic)
                 if (mask >= 0.99)
                 {
                     float3 baseHSL = RGBtoHSL(baseColor.rgb);
@@ -124,7 +136,7 @@ Shader "Custom/PlayerColorTest"
                     float3 resultRGB = HSLtoRGB(resultHSL);
                     return float4(resultRGB, baseColor.a);
                 }
-
+            
                 return baseColor;
             }
             ENDHLSL

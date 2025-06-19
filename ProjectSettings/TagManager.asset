@@ -41,9 +41,9 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
-  - 
+  - Building
+  - Terrain
+  - UnitVisuals
   m_SortingLayers:
   - name: Default
     uniqueID: 0

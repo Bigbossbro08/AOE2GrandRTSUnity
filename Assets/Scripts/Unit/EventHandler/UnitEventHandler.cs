@@ -81,13 +81,13 @@ public class UnitEventHandler : MonoBehaviour
         ulong selfId = (ulong)obj[0];
         ulong targetId = (ulong)obj[1];
         if (selfId == 0 || targetId == 0) return;
-        float damage = (float)obj[2];
+        UnitManager.UnitJsonData.DamageData damageData = (UnitManager.UnitJsonData.DamageData)obj[2];
         Unit targetUnit = UnitManager.Instance.GetUnit(targetId);
         if (targetUnit && targetUnit.GetType() == typeof(MovableUnit))
         {
-            StatComponent.DamageUnit((MovableUnit)targetUnit, damage);
+            StatComponent.DamageUnit((MovableUnit)targetUnit, damageData);
         }
-        //Debug.Log($"OnAttack Event fired and values are {selfId}, {targetId}, {damage}");
+        //NativeLogger.Log($"OnAttack Event fired and values are {selfId}, {targetId}, {damage}");
     }
 
     private void Event_OnProjectileAttack(object[] obj)
@@ -95,7 +95,7 @@ public class UnitEventHandler : MonoBehaviour
         ulong selfId = (ulong)obj[0];
         ulong targetId = (ulong)obj[1];
         if (selfId == 0 || targetId == 0) return;
-        float damage = (float)obj[2];
+        UnitManager.UnitJsonData.DamageData damage = (UnitManager.UnitJsonData.DamageData)obj[2];
 
         // TODO: possibly add some projectile data so that you can ensure which exact projectile to send
         Unit selfUnit = UnitManager.Instance.GetUnit(selfId);
@@ -133,15 +133,10 @@ public class UnitEventHandler : MonoBehaviour
             MovableUnit movableUnit = (MovableUnit)unit;
             if (movableUnit)
             {
-                UnitManager.UnitJsonData militaryUnit = UnitManager.Instance.LoadUnitJsonData(movableUnit.unitDataName);
-                movableUnit.ResetUnit();
-                movableUnit.actionComponent.SetActionSprite(militaryUnit.dying, "DeathEndAction");
-                movableUnit.standSprite = militaryUnit.corpse;
-                movableUnit.walkSprite = militaryUnit.corpse;
-                movableUnit.actionComponent.StartAction();
+                StatComponent.KillUnit(movableUnit);
             }
         }
-        //Debug.Log($"OnDeath Event fired and values are {selfId}");
+        NativeLogger.Log($"OnDeath Event fired and values are {selfId}");
     }
 
     private void Event_OnActionEnd(object[] obj)
@@ -171,9 +166,6 @@ public class UnitEventHandler : MonoBehaviour
                             deadUnit.SetVisual(militaryUnit.corpse);
                             UnitManager.Instance.movableUnitPool.Release(movableUnit);
                         }
-                        //{
-                        //    UnitManager.MilitaryUnit militaryUnit = UnitManager.Instance.LoadMilitaryUnit(movableUnit.unitDataName);
-                        //}
                     }
                 }
                 break;

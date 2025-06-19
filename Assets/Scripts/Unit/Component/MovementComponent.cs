@@ -44,6 +44,9 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     public float movementSpeed = 0.96f;
     public float rotationSpeed = 5.0f;
 
+    [SerializeField] private Rigidbody rb;
+    [SerializeField] private CapsuleCollider solidCollider;
+    [SerializeField] private Unit unit;
 
     public enum State
     {
@@ -63,10 +66,6 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     }
 
     public MovementFlag flags;
-    //public bool controlRotation = true;
-    //public bool isWater = false;
-    //public bool isAutoReverseable = false;
-    //public bool canApplyBoidsAvoidance = false;
 
     public ulong crowdID = 0;
     
@@ -146,12 +145,16 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     public void Stop(bool invokeOnStop = true)
     {
+        if (rb)
+        {
+            rb.linearVelocity = Vector3.zero;
+        }
         if (enabled)
         {
             if (positions.Count > 0)
             {
-                if (invokeOnStop)
-                    OnStopMoving?.Invoke(); 
+                //if (invokeOnStop)
+                //    OnStopMoving?.Invoke(); 
 
                 positions.Clear();
             }
@@ -189,13 +192,13 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     }
 
     // Refactored ControlPosition with smaller responsibilities, early exits, and clearer flow
-    void ControlPosition(float movementDelta)
+    void ControlPosition(float movementDelta, float deltaTime)
     {
         // 1. Determine target 2D position
-        var oldPos2D = ToVector2(transform.localPosition);
-        var desiredPos2D = ToVector2(positions[0]);
+        var oldPos2D = Utilities.ToVector2XZ(transform.localPosition);
+        var desiredPos2D = Utilities.ToVector2XZ(positions[0]);
         var nextPos2D = Vector2.MoveTowards(oldPos2D, desiredPos2D, movementDelta);
-        var nearbyObjs = UnitManager.Instance.spatialHashGrid.QueryInRadius(transform.position, radius + 0.05f);
+        var nearbyObjs = UnitManager.Instance.spatialHashGrid.QueryInRadius(transform.position, radius + 0.14f);
 
         // 2. Adjust height via raycast if needed
         float targetY = positions[0].y;
@@ -210,7 +213,13 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         // 3. Apply boids avoidance if enabled
         if (ShouldApplyBoids())
         {
-            nextPos2D = ApplyBoidsAvoidance(oldPos2D, nextPos2D - oldPos2D, nearbyObjs);
+            //nextPos2D = ApplyBoidsAvoidance(oldPos2D, nextPos2D - oldPos2D, nearbyObjs);
+            if (NewObstacleAvoidance(nearbyObjs, deltaTime, out Vector2 obstacleDirection))
+            {
+                Vector2 obstacleDir2D = obstacleDirection;//Utilities.ToVector2XZ(obstacleDirection);
+                float distance = (nextPos2D - oldPos2D).magnitude;
+                nextPos2D = oldPos2D + obstacleDir2D * distance;
+            }
         }
 
         // 4. Finalize position using NavMesh sampling
@@ -218,8 +227,88 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         transform.localPosition = finalPos;
     }
 
-    // Helpers
-    public static Vector2 ToVector2(Vector3 v) => new Vector2(v.x, v.z);
+    public static bool CapsuleCastMatchesCollider(
+        CapsuleCollider capsule,
+        Vector3 castDirection,
+        float maxDistance,
+        out RaycastHit hitInfo,
+        int layerMask,
+        QueryTriggerInteraction triggerInteraction,
+        Collider targetCollider = null
+    )
+    {
+        Vector3 worldCenter = capsule.transform.TransformPoint(capsule.center);
+        float radius = capsule.radius * Mathf.Max(capsule.transform.lossyScale.x, capsule.transform.lossyScale.z); // Uniform scale safety
+
+        float height = Mathf.Max(capsule.height, radius * 2f);
+        float halfHeight = (height * 0.5f) - radius;
+
+        Vector3 up = capsule.transform.up; // since aligned upwards (Y-axis)
+
+        Vector3 p1 = worldCenter + up * halfHeight;
+        Vector3 p2 = worldCenter - up * halfHeight;
+
+        bool hit = Physics.CapsuleCast(p1, p2, radius, castDirection.normalized, out hitInfo, maxDistance, layerMask, triggerInteraction);
+
+        return hit && (targetCollider == null || hitInfo.collider == targetCollider);
+    }
+
+    Vector3 _obstacleDir = Vector3.zero;
+    float cooldownTimer = 0;
+
+    bool NewObstacleAvoidance(List<Unit> nearbyObjs, float deltaTime, out Vector2 obstacleDirection)
+    {
+        var neighbors = nearbyObjs
+                           .Where(u => u.gameObject != gameObject && !ShouldIgnore(u))
+                           .ToList();
+        for (int i = 0; i < neighbors.Count; i++)
+        {
+            Unit neighborUnit = neighbors[i];
+            Vector3 direction = (neighborUnit.transform.position - transform.position).normalized;
+            float angle = Vector3.Angle(transform.forward, direction);
+            if (angle > 45)
+            {
+                continue;
+            }
+            float distance = direction.magnitude;
+            cooldownTimer -= deltaTime;
+            if (CapsuleCastMatchesCollider(solidCollider, direction, distance, out RaycastHit hitInfo, -1, QueryTriggerInteraction.UseGlobal))
+            {
+                if (cooldownTimer <= 0)
+                {
+                    //Debug.Log(hitInfo.collider.name);
+
+                    // Base avoidance is normal
+                    Vector3 normal = hitInfo.normal;
+
+                    // Get right vector from current forward (or desired move direction)
+                    Vector3 right = Vector3.Cross(Vector3.up, direction.normalized);
+
+                    // Bias factor (positive = right, negative = left)
+                    float biasAmount = 0.5f; // adjust between -1 and 1
+                    Vector3 biasedAvoidance = (normal + right * biasAmount).normalized;
+
+                    _obstacleDir = biasedAvoidance;
+                    cooldownTimer = 0.5f;
+                }
+
+                //DebugExtension.DebugArrow(transform.position, _obstacleDir * 0.5f, Color.cyan, 1f);
+                //var targetRotation = Quaternion.LookRotation(transform.forward, _obstacleDir);
+                //var rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationDelta);
+                //obstacleDirection = rotation * Vector2.up;
+
+                var targetRotation = Quaternion.LookRotation(transform.forward, _obstacleDir);
+                float rotationDelta = rotationSpeed * deltaTime;
+                var rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationDelta);
+
+                obstacleDirection = rotation * Vector2.up;
+                return true;
+            }
+            break;
+        }
+        obstacleDirection = Vector2.zero;
+        return false;
+    }
 
     bool UseRaycastHeight() => conditionToActivateRaycast > 0;
 
@@ -248,14 +337,14 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         var separation = delta.normalized;
         foreach (var u in neighbors)
         {
-            var otherPos = ToVector2(u.transform.localPosition);
+            var otherPos = Utilities.ToVector2XZ(u.transform.localPosition);
             separation += (currentPos - otherPos).normalized;
         }
         separation = separation.normalized * delta.magnitude;
 
         // Sample on NavMesh
         var candidate = currentPos + separation;
-        if (NavMesh.SamplePosition(ToVector3(candidate, transform.localPosition.y), out NavMeshHit hit, UseRaycastHeight() ? 20f : 0.2f, GetAreaMask()))
+        if (NavMesh.SamplePosition(Utilities.ToVector3(candidate, transform.localPosition.y), out NavMeshHit hit, UseRaycastHeight() ? 20f : 0.2f, GetAreaMask()))
         {
             return new Vector2(hit.position.x, hit.position.z);
         }
@@ -281,12 +370,10 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     Vector3 SampleNavMesh(Vector2 pos2D, float y)
     {
         var worldPos = new Vector3(pos2D.x, y, pos2D.y);
-        if (NavMesh.SamplePosition(worldPos, out var hit, 0.5f, GetAreaMask()))
+        if (NavMesh.SamplePosition(worldPos, out var hit, 0.5f, GetAreaMask()) && false)
             return hit.position;
         return worldPos;
     }
-
-    public static Vector3 ToVector3(Vector2 v2, float y) => new Vector3(v2.x, y, v2.y);
 
     public void SetTargetToIgnore(ulong? id = null)
     {
@@ -302,6 +389,48 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         return rotationSpeed;
     }
 
+    private void OnCollisionEnter(Collision collision)
+    {
+        Debug.Log($"On Collision Enter hit: {collision.collider.name} and called from {solidCollider.name}");
+    }
+
+    private void OnCollisionExit(Collision collision)
+    {
+        Debug.Log($"On Collision Exit hit: {collision.collider.name} and called from {solidCollider.name}");
+    }
+
+    public void OnCustomTriggerEnter(Collider other)
+    {
+        if (other.TryGetComponent(out MovementComponent otherMovementComponent))
+        {
+            if (otherMovementComponent.crowdID == crowdID)
+            {
+                Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, true);
+                NativeLogger.Log($"Started ignoring collider: {other.name}");
+            }
+        }
+    }
+
+    public void OnCustomTriggerExit(Collider other)
+    {
+        if (other.TryGetComponent(out MovementComponent otherMovementComponent))
+        {
+            if (otherMovementComponent.crowdID == crowdID)
+            {
+                Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, false);
+                NativeLogger.Log($"Remove ignoring collider: {other.name}");
+            }
+            else
+            {
+                if (Physics.GetIgnoreCollision(solidCollider, otherMovementComponent.solidCollider))
+                {
+                    Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, false);
+                    NativeLogger.Log($"Remove ignoring collider: {other.name}");
+                }
+            }
+        }
+    }
+
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
         if (positions.Count > 0)
@@ -313,7 +442,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
             Vector3 oldPosition = transform.localPosition;
             Vector3 newPosition = Vector3.MoveTowards(transform.localPosition, position, movementDeltaValue);
-            ControlPosition(movementDeltaValue);
+            ControlPosition(movementDeltaValue, deltaTime);
 
             bool controlRotation = HasState(MovementFlag.ControlRotation);
             if (controlRotation)
@@ -321,8 +450,8 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
                 ControlRotation(newPosition, oldPosition, deltaTime);
             }
 
-            Vector2 transformLocalPos2D = ToVector2(transform.localPosition);
-            Vector2 position2D = ToVector2(position);
+            Vector2 transformLocalPos2D = Utilities.ToVector2XZ(transform.localPosition);
+            Vector2 position2D = Utilities.ToVector2XZ(position);
             if ((transformLocalPos2D - position2D).sqrMagnitude < movementDeltaValue * movementDeltaValue)
             {
                 isMarkedForDeletion = true;
@@ -337,7 +466,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
             if (positions.Count == 0)
             {
-                OnStopMoving?.Invoke();
+                //OnStopMoving?.Invoke();
                 enabled = false;
             }
         }
@@ -346,12 +475,25 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     private void OnEnable()
     {
         DeterministicUpdateManager.Instance.Register(this);
+
+        if (rb)
+        {
+            rb.linearDamping = 5;
+            //rb.isKinematic = false;
+        }
     }
 
     private void OnDisable()
     {
         DeterministicUpdateManager.Instance.Unregister(this);
         movementState = State.Idle;
+        if (rb)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.linearDamping = 50;
+            //rb.isKinematic = true;
+        }
+        OnStopMoving?.Invoke();
     }
 
     // Helper function to get the nearest point on the NavMesh
@@ -458,6 +600,10 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     {
         System.Action pathQueueAction = () =>
         {
+            if (unit && unit.GetType() == typeof(MovableUnit) && !StatComponent.IsUnitAliveOrValid((MovableUnit)unit))
+            {
+                return;
+            }
             List<Vector3> pathPoints = new List<Vector3>();
             NavMeshPath path = new NavMeshPath();
 
@@ -487,22 +633,74 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
                 }
                 else
                 {
+                    Matrix4x4 matrix;
+                    List<Vector3> preProcessedPaths = new List<Vector3>();
+                    if (startPosition.HasValue && startPosition != transform.position && path.corners.Length >= 2)
+                    {
+                        NavMeshPath subPath = new NavMeshPath();
+                        Vector3 position = startPosition.Value; 
+                        Vector3 direction = (path.corners[1] - startPosition.Value).normalized;
+                        matrix = Matrix4x4.TRS(position, Quaternion.Euler(0, Quaternion.LookRotation(direction).eulerAngles.y, 0), Vector3.one);
+                        position = matrix.MultiplyPoint(offset);
+                        if (GridGeneration.CalculatePath(transform.position, position, areaMask, ref subPath))
+                        {
+                            for (int i = 1; i < subPath.corners.Length; i++)
+                            {
+                                preProcessedPaths.Add(subPath.corners[i]);
+                                //DebugExtension.DebugWireSphere(subPath.corners[i], Color.red, 0.1f, 3f);
+                            }
+                        }
+                    }
                     for (int i = 1; i < path.corners.Length; i++)
                     {
                         Vector3 prevPosition = path.corners[i - 1];
                         Vector3 position = path.corners[i];
-                        RaycastHit? hit = SelectionController.FindProperHit(position, areaMask);
-                        position = hit != null ? hit.Value.point : position;
+                        Vector3 originalPosition = path.corners[i];
                         Vector3 direction = (position - prevPosition).normalized;
                         if (startPosition.HasValue)
                         {
-                            Matrix4x4 matrix = Matrix4x4.TRS(position, Quaternion.Euler(0, Quaternion.LookRotation(direction).eulerAngles.y, 0), Vector3.one);
+                            matrix = Matrix4x4.TRS(position, Quaternion.Euler(0, Quaternion.LookRotation(direction).eulerAngles.y, 0), Vector3.one);
                             position = matrix.MultiplyPoint(offset);
-                            hit = SelectionController.FindProperHit(position, areaMask);
-                            position = hit != null ? hit.Value.point : position;
                         }
 
-                        pathPoints.Add(position);
+                        preProcessedPaths.Add(position);
+                        //DebugExtension.DebugWireSphere(position, Color.blue, 0.1f, 3f);
+                    }
+
+                    if (preProcessedPaths.Count > 0)
+                    {
+                        pathPoints.Add(preProcessedPaths[0]);
+                        for (int i = 1; i < preProcessedPaths.Count; i++)
+                        {
+                            NavMeshPath subPath = new NavMeshPath();
+                            Vector3 position = preProcessedPaths[i];
+                            Vector3 prevPosition = preProcessedPaths[i - 1];
+                            //if (false)
+                            //{
+                                if (NavMesh.Raycast(prevPosition, position, out NavMeshHit navHit, areaMask))
+                                {
+                                    if (GridGeneration.CalculatePath(prevPosition, position, areaMask, ref subPath))
+                                    {
+                                        for (int j = 0; j < subPath.corners.Length; j++)
+                                        {
+                                            pathPoints.Add(subPath.corners[j]);
+                                        }
+                                    }
+                                }
+                            //}
+                            else
+                            {
+                                pathPoints.Add(position);
+                            }
+                        }
+
+                        for (int i = 0; i < pathPoints.Count; i++)
+                        {
+                            Vector3 position = pathPoints[i];
+                            RaycastHit? hit = SelectionController.FindProperHit(position, areaMask);
+                            position = hit != null ? hit.Value.point : position;
+                            pathPoints[i] = position;
+                        }
                     }
 
                     //int counter = 0;
@@ -528,63 +726,6 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
                 SetPositionData(pathPoints, isMoving);
                 return;
-            }
-
-            try
-            {
-                Vector3 startPosition = transform.position;
-                Vector3 worldPos = newPosition;
-
-                int mapSize = 120;
-
-                Vector2Int startNode = new Vector2Int((int)startPosition.x, (int)startPosition.z);
-                startNode = GridGeneration.Instance.ClampNode(startNode);
-
-                Vector2Int endNode = new Vector2Int((int)worldPos.x, (int)worldPos.z);
-                endNode = GridGeneration.Instance.ClampNode(endNode);
-
-                Vector2Int midNode = (startNode + endNode) / 2;
-                Vector2Int offsetNode = midNode - Vector2Int.one * (160 / 2);
-                if (endNode.x > offsetNode.x + mapSize - 1) endNode.x = offsetNode.x + mapSize - 1;
-                if (endNode.y > offsetNode.y + mapSize - 1) endNode.y = offsetNode.y + mapSize - 1;
-                offsetNode = GridGeneration.Instance.ClampNode(offsetNode);
-                Debug.Log($"{offsetNode}, {endNode}");
-
-                bool isWater = HasState(MovementFlag.IsWater);
-                var grids = GridGeneration.Instance.GenerateGridForPathfinding(offsetNode, mapSize, isWater);
-
-                if (grids[endNode.x, endNode.y] == false)
-                {
-                    Vector2Int? newEndNode = GridGeneration.FindClosestNonObstacle(grids, endNode, mapSize);
-                    endNode = newEndNode.Value;
-                }
-                var raw_points = AStarPathfinding.FindPath(startNode, endNode, grids);
-                // var points = GridGeneration.SmoothPath(raw_points, grids);
-                var points = raw_points;
-                for (int i = 1; i < points.Count; i++)
-                {
-                    Vector3 startPos = new Vector3(points[i - 1].x + 0.5f, 0, points[i - 1].y + 0.5f);
-                    Vector3 endPos = new Vector3(points[i].x + 0.5f, 0, points[i].y + 0.5f);
-                    DebugExtension.DebugWireSphere(startPos, Color.blue, 0.5f, 5);
-                    DebugExtension.DebugWireSphere(endPos, Color.blue, 0.5f, 5);
-                    //Debug.Log($"{points[i - 1]} and {points[1]}");
-                }
-
-                if (points != null && points.Count > 0)
-                {
-                    List<Vector3> positions = new List<Vector3>();
-                    for (int i = 0; i < points.Count; i++)
-                    {
-                        Vector3 pos = new Vector3(points[i].x + 0.5f, 0, points[i].y + 0.5f);
-                        positions.Add(pos);
-                    }
-                    positions.Add(new Vector3(worldPos.x, 0, worldPos.z));
-                    SetPositionData(positions);
-                }
-            }
-            catch (System.Exception e)
-            {
-                // Do something???
             }
         };
         PathfindingManager.Instance.RequestPathfinding(this, pathQueueAction, 0);

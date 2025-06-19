@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Pool;
@@ -24,6 +25,15 @@ public class UnitManager : MonoBehaviour
 {
     public class UnitJsonData
     {
+        public enum ArmorClass
+        {
+            BasePierce = 3,
+            BaseMelee = 4,
+            Infantry = 1,
+            Cavalry = 8,
+            // ... include all relevant classes (IDs from AoE2)
+        }
+
         public class ProjectileUnit
         {
             [JsonProperty("type")]
@@ -40,6 +50,20 @@ public class UnitManager : MonoBehaviour
         {
             public string eventType;
             public float time;
+        }
+
+        [System.Serializable]
+        public class ArmorEntry
+        {
+            public ArmorClass armorClass;
+            public int value;
+        }
+
+        [System.Serializable]
+        public class DamageData
+        {
+            public List<ArmorEntry> attackValues = new();
+            public List<ArmorEntry> armorValues = new();
         }
 
         [JsonProperty("hp")]
@@ -63,8 +87,11 @@ public class UnitManager : MonoBehaviour
         [JsonProperty("projectile_unit")]
         public string projectile_unit = "";
 
-        [JsonProperty("damage")]
-        public float damage = 6.0f;
+        //[JsonProperty("damage")]
+        //public float? damage = 6.0f;
+        
+        [JsonProperty("damageData")]
+        public DamageData damageData = new DamageData();
 
         [JsonProperty("standing")]
         public string standing = "archer_standing";

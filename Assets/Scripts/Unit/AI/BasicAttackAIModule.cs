@@ -32,6 +32,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         AttackTarget
     }
 
+    State desiredState;
     State currentState;
 
     MovableUnit self;
@@ -39,9 +40,11 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     MovableUnit target;
 
     float lookupTimer = 0;
+    bool isTargeted = false;
+
     const float lookupTimerLength = 1.0f;
 
-    const float thresholdForAttackState = (0.14f + 0.05f);
+    const float thresholdForAttackState = (0.14f + 0.2f);
     const float thresholdForAttackStateSqr = thresholdForAttackState * thresholdForAttackState;
 
     //const float thresholdForMovingState = (0.14f + 0.05f) * 2;
@@ -57,36 +60,47 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         return StatComponent.IsUnitAliveOrValid(self);
     }
 
+    public static bool FindForEnemyUnit(MovableUnit self, float lineOfSight, out MovableUnit enemyUnit)
+    {
+        // Do lookup operation here
+        List<Unit> units = UnitManager.Instance.spatialHashGrid.QueryInRadius(self.transform.position, lineOfSight);
+        MinHeap<HeapUnitNode> unitHeap = new MinHeap<HeapUnitNode>();
+
+        for (int i = 0; i < units.Count; i++)
+        {
+            Unit unit = units[i];
+            if (unit == null) continue;
+            if (unit == self) continue;
+            if (unit.playerId == self.playerId) continue;
+            if (unit.GetType() != typeof(MovableUnit)) continue;
+            if (!StatComponent.IsUnitAliveOrValid((MovableUnit)unit)) continue;
+
+            float sqrDistance = (self.transform.position - unit.transform.position).sqrMagnitude;
+            unitHeap.Push(new HeapUnitNode(i, sqrDistance));
+        }
+        if (unitHeap.Count > 0)
+        {
+            HeapUnitNode heapUnitNode = unitHeap.Pop();
+            Unit targetUnit = units[heapUnitNode.Index];
+            if (targetUnit)
+            {
+                enemyUnit = (MovableUnit)targetUnit;
+                return true;
+            }
+        }
+        enemyUnit = null;
+        return false;
+    }
+
     void ProcessLookForTarget()
     {
         if (self.movementComponent.movementState == MovementComponent.State.Idle)
         {
             const float lineOfSight = 5f;
-            // Do lookup operation here
-            List<Unit> units = UnitManager.Instance.spatialHashGrid.QueryInRadius(self.transform.position, lineOfSight);
-            MinHeap<HeapUnitNode> unitHeap = new MinHeap<HeapUnitNode>();
-
-            for (int i = 0; i < units.Count; i++)
+            if (FindForEnemyUnit(self, lineOfSight, out MovableUnit targetUnit))
             {
-                Unit unit = units[i];
-                if (unit == null) continue;
-                if (unit == self) continue;
-                if (unit.playerId == self.playerId) continue;
-                if (unit.GetType() != typeof(MovableUnit)) continue;
-                if (!StatComponent.IsUnitAliveOrValid((MovableUnit)unit)) continue;
-
-                float sqrDistance = (self.transform.position - unit.transform.position).sqrMagnitude;
-                unitHeap.Push(new HeapUnitNode(i, sqrDistance));
-            }
-            if (unitHeap.Count > 0)
-            {
-                HeapUnitNode heapUnitNode = unitHeap.Pop();
-                Unit targetUnit = units[heapUnitNode.Index];
-                if (targetUnit)
-                {
-                    this.target = (MovableUnit)targetUnit;
-                    ChangeState(State.MoveTowardsTarget);
-                }
+                this.target = targetUnit;
+                SetDesiredState(State.MoveTowardsTarget);
             }
         }
     }
@@ -103,22 +117,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     Vector3 GetPositionCloseToTarget()
     {
-        float3 diff = targetPosition - (float3)self.transform.position;
-        float distanceSqr = math.lengthsq(diff);
-        diff = math.normalize(diff);
-
-        float distance = thresholdForAttackState * .99f;
-        //float closeDistance = thresholdForAttackState * .99f;
-        //if (self.unitTypeComponent != null && self.unitTypeComponent.GetType() == typeof(CombatComponent))
-        //{
-        //    distance = Mathf.Sqrt(distanceSqr);
-        //    CombatComponent combatComponent = self.unitTypeComponent as CombatComponent; 
-        //    distance = Mathf.Clamp(distance, closeDistance, combatComponent.attackRange);
-        //    Debug.Log($"{distance} {Mathf.Sqrt(distanceSqr)} {distanceSqr} {closeDistance} {combatComponent.attackRange}");
-        //}
-        distance = 0;
-        diff *= distance;
-        return targetPosition + diff;
+        return targetPosition;
     }
 
     void SetTarget(MovableUnit target, bool updateTargetPosition = true)
@@ -154,9 +153,9 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         return false;
     }
 
-    void ChangeState(State newState)
+    void ChangeState(State newState, bool force = false)
     {
-        if (newState == currentState) return;
+        if (newState == currentState && !force) return;
         // Used for cleaning up
         switch (newState)
         {
@@ -227,14 +226,13 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     {
         if (!StatComponent.IsUnitAliveOrValid(target))
         {
-            ChangeState(State.LookingForTarget);
+            SetDesiredState(State.LookingForTarget);
             return;
         }
 
-        //if ((target.transform.position - self.transform.position).sqrMagnitude < thresholdForAttackStateSqr)
         if (IsTargetWithinRange())
         {
-            ChangeState(State.AttackTarget);
+            SetDesiredState(State.AttackTarget);
             return;
         }
 
@@ -250,8 +248,6 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         if (math.lengthsq(diff) > thresholdForTargetSqr)
         {
             Repath(newTargetPosition);
-            //targetPosition = newTargetPosition;
-            //self.movementComponent.StartPathfind(GetPositionCloseToTarget(), true);
         }
 
         bool repathCheck = false;
@@ -266,7 +262,14 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         {
             Repath(newTargetPosition);
         }
-        //self.combatComponent.StartAction();
+
+        if (!isTargeted)
+        {
+            if (FindForEnemyUnit(self, thresholdForAttackState, out MovableUnit targetUnit))
+            {
+                this.target = targetUnit;
+            }
+        }
     }
 
     bool CanPerformAttack()
@@ -282,7 +285,8 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     {
         if (!StatComponent.IsUnitAliveOrValid(target))
         {
-            ChangeState(State.LookingForTarget);
+            SetDesiredState(State.LookingForTarget);
+            isTargeted = false;
             return;
         }
 
@@ -291,7 +295,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         if (!IsTargetWithinRange())
         {
             Vector3 diff = newTargetPosition - self.transform.position;
-            ChangeState(State.MoveTowardsTarget);
+            SetDesiredState(State.MoveTowardsTarget);
             return;
         }
 
@@ -302,9 +306,20 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         }
     }
 
-    bool isUpdateBlockable()
+    bool IsUpdateBlockable()
     {
         return self.actionComponent.IsPlayingAction();
+    }
+
+    public void SetDesiredState(State newState, bool force = false)
+    {
+        desiredState = newState;
+
+        if (!IsUpdateBlockable())
+        {
+            ChangeState(desiredState, force);
+            currentState = newState;
+        }
     }
 
     public new void DeterministicUpdate(float deltaTime, ulong tickID)
@@ -315,9 +330,15 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             return;
         }
 
-        if (isUpdateBlockable())
+        if (IsUpdateBlockable())
         {
             return;
+        }
+
+        if (currentState != desiredState)
+        {
+            ChangeState(desiredState);
+            currentState = desiredState;
         }
 
         switch (currentState)
@@ -362,7 +383,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         currentState = State.LookingForTarget;
     }
 
-    public void InitializeAI(MovableUnit self, MovableUnit target = null, bool autoSearchable = true)
+    public void InitializeAI(MovableUnit self, MovableUnit target = null, bool autoSearchable = true, bool isTargeted = false)
     {
         if (StatComponent.IsUnitAliveOrValid(self))
         {
@@ -380,12 +401,12 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             if (target)
             {
                 this.target = target;
-                ChangeState(State.MoveTowardsTarget);
+                SetDesiredState(State.MoveTowardsTarget, true);
                 shouldBeEnabled = true;
             }
             else if (autoSearchable)
             {
-                ChangeState(State.LookingForTarget);
+                SetDesiredState(State.LookingForTarget);
                 shouldBeEnabled = true;
             }
             enabled = shouldBeEnabled;

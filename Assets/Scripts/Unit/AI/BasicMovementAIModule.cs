@@ -6,13 +6,14 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
 {
     public enum State
     {
+        WaitingForPath,
         MoveTowardsPoint,
         ReachedDestination
     }
 
     State currentState;
     State desiredState;
-    MovableUnit self;
+    protected MovableUnit self;
     Vector3 position;
     Vector3 offset;
     Vector3? startPosition;
@@ -23,6 +24,11 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         position = self.movementComponent.GetLastPointInPathfinding();
     }
 
+    public virtual void OnChangeState(State newState)
+    {
+
+    }
+
     void ChangeState(State newState, bool force = false)
     {
         if (newState == currentState && !force) { return; }
@@ -30,9 +36,14 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         // Used for cleaning up
         switch (newState)
         {
-            case State.MoveTowardsPoint:
+            case State.WaitingForPath:
                 {
                     DoPathfind();
+                }
+                break;
+            case State.MoveTowardsPoint:
+                {
+
                 }
                 break;
             case State.ReachedDestination:
@@ -43,6 +54,7 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
                 }
                 break;
         }
+        OnChangeState(newState);
         currentState = newState;
     }
 
@@ -56,7 +68,16 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         return self.actionComponent.IsPlayingAction();
     }
 
-    void Process_MoveTowardsPoint()
+    private void Process_WaitingForPath()
+    {
+        if (!self.movementComponent.HasPathToFollow())
+        {
+            return;
+        }
+        SetDesiredState(State.MoveTowardsPoint);
+    }
+
+    public virtual void Process_MoveTowardsPoint()
     {
         if (self.movementComponent.movementState == MovementComponent.State.Idle)
         {
@@ -85,6 +106,11 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
 
         switch (currentState)
         {
+            case State.WaitingForPath:
+                {
+                    Process_WaitingForPath();
+                }
+                break;
             case State.MoveTowardsPoint:
                 {
                     Process_MoveTowardsPoint();
@@ -139,7 +165,7 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         }
     }
 
-    internal void InitializeAI(MovableUnit self, Vector3 position, ulong crowdId, Vector3 offset, Vector3? startPosition = null)
+    public void InitializeAI(MovableUnit self, Vector3 position, ulong crowdId, Vector3 offset, Vector3? startPosition = null)
     {
         if (StatComponent.IsUnitAliveOrValid(self))
         {
@@ -148,9 +174,8 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
             this.offset = offset;
             this.startPosition = startPosition;
             self.movementComponent.crowdID = crowdId;
-
-            currentState = State.ReachedDestination;
-            SetDesiredState(State.MoveTowardsPoint, true);
+            currentState = State.MoveTowardsPoint;
+            SetDesiredState(State.WaitingForPath, true);
             enabled = true;
             return;
         }

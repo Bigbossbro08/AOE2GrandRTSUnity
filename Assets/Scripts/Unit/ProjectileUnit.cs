@@ -8,7 +8,7 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
     //[SerializeField] private Transform end;
     MovableUnit sourceUnit = null;
     [SerializeField] private Collider _collider;
-    float damage = 0.0f;
+    UnitManager.UnitJsonData.DamageData damageData = new UnitManager.UnitJsonData.DamageData();
 
     private void OnEnable()
     {
@@ -34,15 +34,16 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
             enabled = false;
     }
 
-    public void SetProjectileData(MovableUnit sourceUnit = null, float damage = 0.0f, string projectileUnitName = null)
+    public void SetProjectileData(MovableUnit sourceUnit = null, UnitManager.UnitJsonData.DamageData damageData = default, string projectileUnitName = null)
     {
-        float newDamage = damage;
+        UnitManager.UnitJsonData.DamageData newDamageData = damageData;
         if (projectileUnitName != null)
         {
             UnitManager.UnitJsonData.ProjectileUnit projectileUnitData = UnitManager.Instance.LoadProjectileJsonData(projectileUnitName);
-            newDamage += projectileUnitData.damage;
+            // TODO: Make it additive
+            //newDamageData += projectileUnitData.damage;
         }
-        this.damage = newDamage;
+        this.damageData = newDamageData;
         this.sourceUnit = sourceUnit;
     }
 
@@ -80,7 +81,7 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
 
             NativeLogger.Log($"Projectile collision hit! Named {other.gameObject.name}");
             // Execute event
-            UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnAttack, sourceUnit.id, otherMovableUnit.id, damage);
+            UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnAttack, sourceUnit.id, otherMovableUnit.id, damageData);
 
             // Return to pool
             gameObject.SetActive(false);

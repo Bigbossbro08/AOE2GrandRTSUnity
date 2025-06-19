@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.VisualScripting.Antlr3.Runtime;
 using UnityEngine;
 
 public interface IDeterministicUpdate
@@ -128,6 +129,8 @@ public class DeterministicUpdateManager : MonoBehaviour
     public const float FixedStep = 1/ 25f; // 60 Hz
     public DeterministicTimer timer = new DeterministicTimer();
 
+    private bool paused = true;             // start paused until you explicitly start
+
     // **Use a list array instead of a dictionary**
     private readonly List<IDeterministicUpdate>[] categorizedObjects = new List<IDeterministicUpdate>[64];
 
@@ -148,35 +151,75 @@ public class DeterministicUpdateManager : MonoBehaviour
         Physics.simulationMode = SimulationMode.Script;
     }
 
+
     private void Update()
     {
-        accumulatedTime += Time.deltaTime;
-        while (accumulatedTime >= FixedStep)
+        // 1) Always run input & networking
+        InputManager.Instance.NetworkTick();
+
+        // 2) Only run deterministic simulation when unpaused
+        if (!paused)
         {
-            accumulatedTime -= FixedStep;
+            accumulatedTime += Time.deltaTime;
+            while (accumulatedTime >= FixedStep)
+            {
+                accumulatedTime -= FixedStep;
 
-            // Implement Input Callbacks here
+                // a) input callbacks
+                InputManager.Instance.DeterministicUpdate(FixedStep, tickCount);
+
+                // b) game logic
+                RunDeterministicUpdate(FixedStep, tickCount);
+
+                // c) pathfinding, timers, physics
+                if (PathfindingManager.Instance.enabled)
+                    PathfindingManager.Instance.DeterministicUpdate(FixedStep, tickCount);
+
+                timer.Update(FixedStep);
+                Physics.Simulate(FixedStep);
+
+                elapsedTime += Time.deltaTime;
+                tickCount++;
+            }
+        } else
+        {
+            // a) input callbacks
             InputManager.Instance.DeterministicUpdate(FixedStep, tickCount);
-
-            // Run deterministic game logic here
-            RunDeterministicUpdate(FixedStep, tickCount);
-
-            if (PathfindingManager.Instance.enabled)
-                PathfindingManager.Instance.DeterministicUpdate(FixedStep, tickCount);
-
-            // Step the deterministic timer
-            timer.Update(FixedStep);
-
-            // Manually simulate physics for this step
-            Physics.Simulate(FixedStep);
-
-            elapsedTime += Time.deltaTime;
-            tickCount++;
         }
 
-        //if (PathfindingManager.Instance.enabled)
-        //    PathfindingManager.Instance.DefaultUpdate();
+        // TODO:
+        //SpriteManager.Instance.Render();
     }
+
+    //private void Update()
+    //{
+    //    accumulatedTime += Time.deltaTime;
+    //    while (accumulatedTime >= FixedStep)
+    //    {
+    //        accumulatedTime -= FixedStep;
+    //
+    //        // Implement Input Callbacks here
+    //        InputManager.Instance.DeterministicUpdate(FixedStep, tickCount);
+    //
+    //        // Run deterministic game logic here
+    //        RunDeterministicUpdate(FixedStep, tickCount);
+    //
+    //        if (PathfindingManager.Instance.enabled)
+    //            PathfindingManager.Instance.DeterministicUpdate(FixedStep, tickCount);
+    //
+    //        // Step the deterministic timer
+    //        timer.Update(FixedStep);
+    //
+    //        // Manually simulate physics for this step
+    //        Physics.Simulate(FixedStep);
+    //
+    //        elapsedTime += Time.deltaTime;
+    //        tickCount++;
+    //    }
+    //
+    //    //if (PathfindingManager.Instance.enabled)
+    //    //    PathfindingManager.Instance.DefaultUpdate();
+    //}
 
     private void OnDestroy()
     {
@@ -218,20 +261,20 @@ public class DeterministicUpdateManager : MonoBehaviour
         }
     }
 
+    public bool IsPaused() => paused;
+
     public void Pause()
     {
-        enabled = false; // Stops Update() from running
-        Debug.LogWarning("Deterministic Simulation Paused.");
+        paused = true;
+        NativeLogger.Log("Simulation Paused.", true);
     }
 
     public void Resume()
     {
-        enabled = true; // Resumes Update() execution
-        Debug.Log("Deterministic Simulation Resumed.");
-    }
-
-    public bool IsPaused()
-    {
-        return !enabled;
+        if (paused)
+        {
+            paused = false;
+            NativeLogger.Log("Simulation Resumed.");
+        }
     }
 }
