@@ -83,6 +83,12 @@ public class MapLoader : MonoBehaviour
         [JsonProperty] public List<Unit.UnitData> units;
     }
 
+    [System.Serializable]
+    public class GameData
+    {
+        public string m_DataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\";
+    }
+
     public static MapLoader Instance;
 
     void Awake()
@@ -95,31 +101,61 @@ public class MapLoader : MonoBehaviour
         {
             Instance = this;
         }
+        if (String.IsNullOrEmpty(configFileLocation))
+        {
+            configFileLocation = Path.Combine(Application.dataPath, "../gameConfig.json");
+        }
+        LoadOrCreateJson(configFileLocation);
         enabled = false;
     }
 
-    public string m_DataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\";
+    public GameData gameData = new GameData();
+    string configFileLocation = "";
 
     public static string GetDataPath()
     {
-        return Instance.m_DataPath;
+        return Instance.gameData.m_DataPath;
     }
 
-    public static void SetDataPath(string value)
+    void LoadOrCreateJson(string fullPath)
     {
-        Instance.m_DataPath = value;
+        if (File.Exists(fullPath))
+        {
+            try
+            {
+                string json = File.ReadAllText(fullPath);
+                gameData = JsonConvert.DeserializeObject<GameData>(json) ?? new GameData();
+            }
+            catch
+            {
+                gameData = new GameData();
+                SaveJson(fullPath);
+            }
+        }
+        else
+        {
+            gameData = new GameData();
+            SaveJson(fullPath);
+        }
+    }
+
+    public void SaveJson(string fullPath)
+    {
+        string json = JsonUtility.ToJson(gameData, true);
+        File.WriteAllText(fullPath, json);
+        NativeLogger.Log("Saved data to: " + fullPath);
     }
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        StartCoroutine(Load());
+        //StartCoroutine(Load());
         //GameManager.Instance.IncrementLoadCount();
     }
 
     IEnumerator Load()
     {
-        string json = File.ReadAllText(m_DataPath + "saves/save.json"); 
+        string json = File.ReadAllText(gameData.m_DataPath + "saves/save.json"); 
         
         var settings = new JsonSerializerSettings
         {
@@ -227,7 +263,7 @@ public class MapLoader : MonoBehaviour
         };
 
         string json = JsonConvert.SerializeObject(state, Formatting.Indented, settings);
-        File.WriteAllText(m_DataPath + "saves/save.json", json);
+        File.WriteAllText(gameData.m_DataPath + "saves/save.json", json);
 
         //Dictionary<ulong, Unit> units = UnitManager.Instance.GetAllUnits();
         //List<SaveLoadData> unitDatas = new List<SaveLoadData>();

@@ -129,7 +129,7 @@ public class UnitManager : MonoBehaviour
     public DeadUnit deadUnitPrefab;
     public ProjectileUnit projectileUnitPrefab;
 
-    public string dataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\data";
+    private string dataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\data";
 
     private void Awake()
     {

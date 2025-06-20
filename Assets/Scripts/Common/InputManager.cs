@@ -79,7 +79,7 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
     private void ProcessCommandsForFrame(ulong frame)
     {
         ulong timeoutTicks = (ulong)networkAdapter.GetDelay();
-        NativeLogger.Log($"timeout delay: {timeoutTicks}, frame id: {frame} and last received tick: {lastReceivedTick}");
+        //NativeLogger.Log($"timeout delay: {timeoutTicks}, frame id: {frame} and last received tick: {lastReceivedTick}");
         if (!queuedCommands.TryGetValue(frame, out var commands))
         {
             // compute signed difference
@@ -157,7 +157,9 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
 
     public void SendInputCommand(InputCommand command)
     {
-        NativeLogger.Log($"Command type recieved was: {command.action}");
+        if (command.action != "KeepAlive")
+            NativeLogger.Log($"Command type recieved was: {command.action}");
+
         if (command.action == ResumeGameCommand.commandName)
         {
             // execute on the same frame
@@ -177,7 +179,7 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
     {
         ProcessCommandsForFrame(tickID);
 
-        // KeepAlive so you don’t time out while paused
+        // KeepAlive so you donï¿½t time out while paused
         var keepAlive = new InputCommand { playerID = -1, action = "KeepAlive" };
         SendInputCommand(keepAlive);
     }
