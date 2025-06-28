@@ -62,7 +62,20 @@ public class CustomSpriteLoader : MonoBehaviour
         }
     }
 
+    public class IconReturnData
+    {
+        public Sprite sprite;
+        public Texture2D iconTexture;
+
+        public IconReturnData(Sprite sprite, Texture2D iconTexture)
+        {
+            this.sprite = sprite;
+            this.iconTexture = iconTexture;
+        }
+    }
+
     Dictionary<string, SpriteReturnData> spriteDictionary = new Dictionary<string, SpriteReturnData>();
+    Dictionary<string, IconReturnData> iconDictionary = new Dictionary<string, IconReturnData>();
 
     public static CustomSpriteLoader Instance { get; private set; }
 
@@ -135,6 +148,50 @@ public class CustomSpriteLoader : MonoBehaviour
         }
 
         return spriteGroups;
+    }
+
+    public IconReturnData LoadIconSprite(string file)
+    {
+        IconReturnData iconReturnData = null;
+        try
+        {
+            if (iconDictionary.ContainsKey(file))
+            {
+                iconReturnData = iconDictionary[file];
+                return iconReturnData;
+            }
+            string path = Path.Combine(MapLoader.GetDataPath());
+            //string path = Path.Combine("E:\\repos\\AOE2GrandRTSUnityFiles\\", "new_format");
+            //string jsonPath = Path.Combine(path, $"{file}.json");
+            //SpriteSheet metadata = SpriteMetadata(jsonPath);
+            string pngPath = Path.Combine(path, $"{file}.png");
+
+            Texture2D texture = SpriteImage(pngPath);
+            texture.name = $"{file}.png";
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.Apply();
+
+            Sprite sprite = Sprite.Create(
+                texture,
+                new Rect(0, 0, texture.width, texture.height),
+                new Vector2(0.5f, 0.5f), // Pivot in the center
+                64.0f                   // Pixels Per Unit (adjust if needed)
+            );
+
+            var result = new IconReturnData(
+                sprite,
+                texture
+            );
+
+            iconDictionary.Add(file, result);
+            iconReturnData = result;
+        }
+        catch (System.Exception e)
+        {
+            NativeLogger.Error($"{e.Message} {e.StackTrace}");
+        }
+        return iconReturnData;
     }
 
     public SpriteReturnData LoadSprite(string file)

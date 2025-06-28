@@ -136,6 +136,18 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         return DeterministicVisualUpdater;
     }
 
+    public CustomSpriteLoader.IconReturnData GetSpriteIcon()
+    {
+        UnitManager.UnitJsonData militaryUnit = UnitManager.Instance.LoadUnitJsonData(unitDataName);
+        if (militaryUnit == null)
+        {
+            NativeLogger.Error($"Failed to load unit from data {unitDataName}");
+            return null;
+        }
+        CustomSpriteLoader.IconReturnData iconReturnData = CustomSpriteLoader.Instance.LoadIconSprite(militaryUnit.icon);
+        return iconReturnData;
+    }
+
     void LoadMovableData(string unitDataName, bool callVisualUpdate = false)
     {
         UnitManager.UnitJsonData militaryUnit = UnitManager.Instance.LoadUnitJsonData(unitDataName);

@@ -8,6 +8,7 @@ using static UnityEngine.Rendering.DebugUI.Table;
 using Unity.VisualScripting;
 using static Utilities;
 using System.Linq;
+using UnityEngine.EventSystems;
 
 public class MoveUnitCommand : InputCommand {
     public const string commandName = "Move Unit Command";
@@ -145,6 +146,15 @@ public class MoveUnitsCommand : InputCommand
         if (StatComponent.IsUnitAliveOrValid(movableUnit))
         {
             movableUnit.ResetUnit(true);
+            Vector3 diff = startPosition.Value - position;
+            float sqrMagnitude = diff.sqrMagnitude;
+            const float distanceForFastRearrange = 5;
+            const float distanceForFastRearrangeSqr = distanceForFastRearrange * distanceForFastRearrange;
+            if (sqrMagnitude < distanceForFastRearrangeSqr)
+            {
+                startPosition = null;
+            }
+
             if (startPosition == null)
             {
                 startPosition = unit.transform.position;
@@ -323,20 +333,32 @@ public class SelectionController : MonoBehaviour
 
     [SerializeField] Texture2D dockingTexture;
 
-    private List<Unit> selectedUnits = new List<Unit>();
-
-    private bool navalFocusSelect = false;
-    private bool shoreMode = false;
-
-    //GameObject testCube;
+    [SerializeField] SelectionPanel selectionPanel;
 
     void Start()
     {
         wallBuilder = GetComponent<WallBuilder>();
     }
 
+    bool AttackMove = false;
+
+    public void ToggleAttackMove()
+    {
+        AttackMove = !AttackMove;
+    }
+
     void Update()
     {
+        // Ignore if pointer is over UI
+        if (EventSystem.current.IsPointerOverGameObject())
+        {
+            if (isDragging && Input.GetMouseButtonUp(0))
+            {
+                EndDragging();
+            }
+            return;
+        }
+
         if (Input.GetKeyDown(KeyCode.F3))
         {
             if (DeterministicUpdateManager.Instance.IsPaused())
@@ -351,39 +373,6 @@ public class SelectionController : MonoBehaviour
                 pauseGameCommand.action = PauseGameCommand.commandName;
                 InputManager.Instance.SendInputCommand(pauseGameCommand);
             }
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            wallHitTest = !wallHitTest;
-        }
-
-        if (wallHitTest)
-        {
-            int layer = ~(1 << 2 | 1 << 3 | 1 << 6);
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, float.MaxValue, layer))
-            {
-                RaycastHit? newRayHit = FindProperHit(hit.point, 1);
-                if (newRayHit.HasValue)
-                {
-                    DebugExtension.DebugWireSphere(newRayHit.Value.point, Color.cyan, 0.1f, 5.0f);
-                }
-            }
-            return;
-        }
-
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            if (wallBuilder)
-            {
-                wallBuilder.enabled = !wallBuilder.enabled;
-            }
-        }
-
-        if (wallBuilder.enabled)
-        {
-            return;
         }
 
         if (Input.GetKeyDown(KeyCode.Alpha0))
@@ -404,65 +393,6 @@ public class SelectionController : MonoBehaviour
         HandleSelectionInput();
         HandleCommandInput();
     }
-
-    void OnUnitSelectMode()
-    {
-        StopShoreMode();
-        if (cameraMovement)
-        {
-            cameraMovement.SetNavalMode(navalFocusSelect);
-        }
-    }
-
-    void OnNavalSelectMode()
-    {
-        StopShoreMode(); 
-        if (cameraMovement)
-        {
-            cameraMovement.SetNavalMode(navalFocusSelect);
-        }
-    }
-
-    void StartShoreMode()
-    {
-        shoreMode = true;
-        Cursor.SetCursor(dockingTexture, new Vector2(dockingTexture.width / 2, dockingTexture.height / 2), CursorMode.Auto);
-    }
-
-    void StopShoreMode()
-    {
-        shoreMode = false;
-        Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
-    }
-
-    void HandleNavalFocusOrder(ShipUnit ship, RaycastHit hit)
-    {
-        if (shoreMode)
-        {
-            Debug.Log("Shore mode order!");
-
-            GridGeneration.Instance.FindShorePair(hit.point, out List<Vector3> positionPair);
-            if (positionPair.Count == 2)
-            {
-                MoveShipToDockCommand moveShipToDockCommand = new MoveShipToDockCommand();
-                moveShipToDockCommand.action = MoveShipToDockCommand.commandName;
-                moveShipToDockCommand.unitID = ship.GetUnitID();
-                moveShipToDockCommand.position = positionPair[1];
-                moveShipToDockCommand.targetToDock = positionPair[0];
-                InputManager.Instance.SendInputCommand(moveShipToDockCommand);
-            }
-
-            StopShoreMode();
-            return;
-        }
-        MoveShipUnitCommand moveShipUnitCommand = new MoveShipUnitCommand();
-        moveShipUnitCommand.action = MoveShipUnitCommand.commandName;
-        moveShipUnitCommand.unitID = ship.GetUnitID();
-        moveShipUnitCommand.position = hit.point;
-        InputManager.Instance.SendInputCommand(moveShipUnitCommand);
-    }
-
-    bool wallHitTest = false;
 
     public static NavMeshHit? FindProperNavHit(Vector3 targetPosition, int areaMask)
     {
@@ -523,34 +453,12 @@ public class SelectionController : MonoBehaviour
         return null;
     }
 
-    void HandleCommandInput()
+    void HandleDeleteCommand()
     {
-        
-
-        if (Input.GetKeyDown(KeyCode.N))
-        {
-            navalFocusSelect = !navalFocusSelect;
-            if (navalFocusSelect) 
-                OnNavalSelectMode();
-            else 
-                OnUnitSelectMode();
-        }
-
-        if (Input.GetKeyDown(KeyCode.K))
-        {
-            if (shoreMode)
-            {
-                StopShoreMode();
-            } else
-            {
-                StartShoreMode();
-            }
-        }
-
         if (Input.GetKeyDown(KeyCode.Delete))
         {
             List<ulong> ids = new List<ulong>();
-            foreach (Unit u in selectedUnits)
+            foreach (Unit u in selectionPanel.GetSelectedUnits())
             {
                 if (u.GetType() == typeof(MovableUnit))
                 {
@@ -569,79 +477,79 @@ public class SelectionController : MonoBehaviour
                 InputManager.Instance.SendInputCommand(deleteUnitsCommand);
             }
         }
+    }
 
+    void HandleOrderCommand()
+    {
         if (Input.GetMouseButtonDown(1))
         {
-            if (navalFocusSelect)
-                Debug.Log("Starting Naval Select");
-
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
             int layer = ~(1 << 2 | 1 << 3);
             if (Physics.Raycast(ray, out RaycastHit hit, float.MaxValue, layer))
             {
                 List<ulong> ids = new List<ulong>();
-                foreach (Unit u in selectedUnits)
+                foreach (Unit u in selectionPanel.GetSelectedUnits())
                 {
-                    if (navalFocusSelect)
+                    if (u.GetType() == typeof(MovableUnit))
                     {
-                        if (u.GetType() == typeof(ShipUnit))
-                        {
-                            ShipUnit ship = (ShipUnit)u;
-                            HandleNavalFocusOrder(ship, hit);
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        if (u.GetType() == typeof (MovableUnit))
-                        {
-                            if (u.playerId == 1)
-                                ids.Add(u.GetUnitID());
-                        }
+                        if (u.playerId == 1)
+                            ids.Add(u.GetUnitID());
                     }
                 }
-                if (!navalFocusSelect)
+                Vector3 position = hit.point;
+                if (hit.collider.CompareTag("Wall Untagged"))
                 {
-                    Vector3 position = hit.point;
-                    if (hit.collider.CompareTag("Wall Untagged"))
+                    if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 100, -1))
                     {
-                        if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 100, -1))
-                        {
-                            position = navHit.position;
-                        }
-                    }
-                    if (ids.Count > 1)
-                    {
-                        MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
-                        moveUnitsCommand.action = MoveUnitsCommand.commandName;
-                        moveUnitsCommand.unitIDs = new List<ulong>();
-                        moveUnitsCommand.unitIDs.AddRange(ids);
-                        moveUnitsCommand.position = hit.point;
-                        moveUnitsCommand.IsAttackMove = true;
-                        InputManager.Instance.SendInputCommand(moveUnitsCommand);
-                    } else if (ids.Count == 1)
-                    {
-                        if (IsTargetingUnit(hit, out MovableUnit targetMovableUnit))
-                        {
-                            AttackUnitCommand attackUnitCommand = new AttackUnitCommand();
-                            attackUnitCommand.action = AttackUnitCommand.commandName;
-                            attackUnitCommand.unitID = ids[0];
-                            attackUnitCommand.targetID = targetMovableUnit.id;
-                            InputManager.Instance.SendInputCommand(attackUnitCommand);
-                        }
-                        else
-                        {
-                            MoveUnitCommand moveUnitCommand = new MoveUnitCommand();
-                            moveUnitCommand.action = MoveUnitCommand.commandName;
-                            moveUnitCommand.unitID = ids[0];
-                            moveUnitCommand.position = hit.point;
-                            InputManager.Instance.SendInputCommand(moveUnitCommand);
-                        }
+                        position = navHit.position;
                     }
                 }
+                if (ids.Count > 1)
+                {
+                    MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
+                    moveUnitsCommand.action = MoveUnitsCommand.commandName;
+                    moveUnitsCommand.unitIDs = new List<ulong>();
+                    moveUnitsCommand.unitIDs.AddRange(ids);
+                    moveUnitsCommand.position = hit.point;
+                    moveUnitsCommand.IsAttackMove = AttackMove;
+                    InputManager.Instance.SendInputCommand(moveUnitsCommand);
+                    AttackMove = false;
+                }
+                //else if (ids.Count == 1)
+                //{
+                //    if (IsTargetingUnit(hit, out MovableUnit targetMovableUnit))
+                //    {
+                //        AttackUnitCommand attackUnitCommand = new AttackUnitCommand();
+                //        attackUnitCommand.action = AttackUnitCommand.commandName;
+                //        attackUnitCommand.unitID = ids[0];
+                //        attackUnitCommand.targetID = targetMovableUnit.id;
+                //        InputManager.Instance.SendInputCommand(attackUnitCommand);
+                //    }
+                //    else
+                //    {
+                //        MoveUnitCommand moveUnitCommand = new MoveUnitCommand();
+                //        moveUnitCommand.action = MoveUnitCommand.commandName;
+                //        moveUnitCommand.unitID = ids[0];
+                //        moveUnitCommand.position = hit.point;
+                //        InputManager.Instance.SendInputCommand(moveUnitCommand);
+                //    }
+                //}
                 DebugExtension.DebugWireSphere(hit.point, Color.cyan, 0.1f, 5.0f);
             }
         }
+    }
+
+    void HandleCommandInput()
+    {
+        HandleDeleteCommand();
+        HandleOrderCommand();
+    }
+
+    void EndDragging()
+    {
+        endScreenPos = Input.mousePosition;
+        SelectObjects();
+        isDragging = false;
     }
 
     void HandleSelectionInput()
@@ -653,29 +561,12 @@ public class SelectionController : MonoBehaviour
         }
         else if (Input.GetMouseButtonUp(0)) // Release to finish selection
         {
-            isDragging = false;
-            endScreenPos = Input.mousePosition;
-            //TestSelection();
-
-            //if (Vector2.Distance(startScreenPos, endScreenPos) < clickThreshold)
-            //{
-            //    SelectSingleObject();
-            //}
-            //else
-            //{
-            SelectObjects();
-            //}
+            EndDragging();
         }
 
         if (isDragging)
         {
             endScreenPos = Input.mousePosition;
-
-            //TestSelection();
-
-            // Debug draw
-            //DebugDrawBox(center, size, rotation);
-
         }
     }
 
@@ -708,30 +599,22 @@ public class SelectionController : MonoBehaviour
         Quaternion rotation = Quaternion.Euler(30, -45, 0);
         const int selectLayer = 1 << 3; // Selectables
         Collider[] hits = Physics.OverlapBox(center, size / 2, rotation, selectLayer);
-        selectedUnits.Clear();
+        List<Unit> selectedUnits = new List<Unit>();
+        //selectedUnits.Clear();
         const string militaryUnitTag = "Military Unit";
         const string shipUnitTag = "Ship Unit";
         foreach (Collider hit in hits)
         {
-            if (navalFocusSelect)
+            GameObject obj = FindParentByTag(hit.transform, militaryUnitTag);
+            if (obj != null && obj.TryGetComponent(out MovableUnit unit))
             {
-                GameObject obj = FindParentByTag(hit.transform, shipUnitTag);
-                if (obj != null && obj.TryGetComponent(out ShipUnit shipUnit))
-                {
-                    selectedUnits.Add(shipUnit);
-                    Debug.Log("Selected unit:" + obj.gameObject.name);
-                }
-            } else
-            {
-                GameObject obj = FindParentByTag(hit.transform, militaryUnitTag);
-                if (obj != null && obj.TryGetComponent(out MovableUnit unit))
-                {
-                    selectedUnits.Add(unit);
-                    Debug.Log("Selected unit:" + obj.gameObject.name);
-                }
+                //var icon = unit.GetSpriteIcon();
+                selectedUnits.Add(unit);
+                //Debug.Log("Selected unit:" + obj.gameObject.name);
             }
         }
-        Debug.Log("Selected Units: " + hits.Length);
+        selectionPanel.SetupUnitSelection(selectedUnits);
+        //Debug.Log("Selected Units: " + hits.Length);
     }
 
     void GetSelectionBoxTransform(out Vector3 position, out Vector3 size)

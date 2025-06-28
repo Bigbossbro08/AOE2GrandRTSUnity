@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Unity.VisualScripting.Antlr3.Runtime;
+using UnityEditor.Rendering;
 using UnityEngine;
 
 public interface IDeterministicUpdate
@@ -128,6 +129,9 @@ public class DeterministicUpdateManager : MonoBehaviour
     private float accumulatedTime = 0f;
     public const float FixedStep = 1/ 25f; // 60 Hz
     public DeterministicTimer timer = new DeterministicTimer();
+    public DeterministicCoroutineManager CoroutineManager { get; private set; }
+
+    bool initialized = false;
 
     private bool paused = true;             // start paused until you explicitly start
 
@@ -149,11 +153,16 @@ public class DeterministicUpdateManager : MonoBehaviour
         enabled = false;
         Time.fixedDeltaTime = FixedStep;
         Physics.simulationMode = SimulationMode.Script;
+        CoroutineManager = new DeterministicCoroutineManager(); ;
     }
-
 
     private void Update()
     {
+        //if (!initialized)
+        //{
+        //    CoroutineManager = new DeterministicCoroutineManager();
+        //}
+
         // 1) Always run input & networking
         InputManager.Instance.NetworkTick();
 
@@ -174,11 +183,13 @@ public class DeterministicUpdateManager : MonoBehaviour
                 // c) pathfinding, timers, physics
                 if (PathfindingManager.Instance.enabled)
                     PathfindingManager.Instance.DeterministicUpdate(FixedStep, tickCount);
+                
+                CoroutineManager?.Tick();
 
                 timer.Update(FixedStep);
                 Physics.Simulate(FixedStep);
 
-                elapsedTime += Time.deltaTime;
+                elapsedTime += FixedStep;
                 tickCount++;
             }
         } else

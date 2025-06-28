@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Pool;
+using static CustomSpriteLoader;
 using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
 
 public class PlayerData
@@ -87,8 +88,8 @@ public class UnitManager : MonoBehaviour
         [JsonProperty("projectile_unit")]
         public string projectile_unit = "";
 
-        //[JsonProperty("damage")]
-        //public float? damage = 6.0f;
+        [JsonProperty("icon")]
+        public string icon = "";
         
         [JsonProperty("damageData")]
         public DamageData damageData = new DamageData();
@@ -123,6 +124,9 @@ public class UnitManager : MonoBehaviour
 
     Dictionary<ulong, PlayerData> players = new Dictionary<ulong, PlayerData>();
     Dictionary<ulong, Unit> units = new Dictionary<ulong, Unit>(5000);
+    
+    Dictionary<string, UnitJsonData> unitData = new Dictionary<string, UnitJsonData>();
+    Dictionary<string, UnitJsonData.ProjectileUnit> projectileData = new Dictionary<string, UnitJsonData.ProjectileUnit>();
 
     public MovableUnit movableUnitPrefab;
     public ShipUnit shipUnitPrefab;
@@ -376,20 +380,25 @@ public class UnitManager : MonoBehaviour
 
     public UnitJsonData LoadUnitJsonData(string name)
     {
-        if (!name.StartsWith("military_units\\"))
+        if (unitData.ContainsKey(name))
         {
-            Debug.Log("It doesnt start with the name military_units");
-            return null;
+            return unitData[name];
         }
         string jsonPath = Path.Combine(dataPath, name + ".json");
         UnitJsonData militaryUnit = JsonConvert.DeserializeObject<UnitJsonData>(File.ReadAllText(jsonPath));
+        unitData.Add(name, militaryUnit);
         return militaryUnit;
     }
 
     public UnitJsonData.ProjectileUnit LoadProjectileJsonData(string name)
     {
+        if (projectileData.ContainsKey(name))
+        {
+            return projectileData[name];
+        }
         string jsonPath = Path.Combine(dataPath, name + ".json");
         UnitJsonData.ProjectileUnit projectileUnit = JsonConvert.DeserializeObject<UnitJsonData.ProjectileUnit>(File.ReadAllText(jsonPath));
+        projectileData.Add(name, projectileUnit);
         return projectileUnit;
     }
 }
