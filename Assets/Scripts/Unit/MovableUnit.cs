@@ -6,7 +6,6 @@ using UnityEngine;
 using static PathfinderTest;
 using static Unit;
 using static UnityEngine.GraphicsBuffer;
-using static UnityEngine.Rendering.GPUSort;
 
 [RequireComponent(typeof(MovementComponent))]
 public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
@@ -28,6 +27,9 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     public Transform aiTransformHolder;
 
+    //public UnitAIModule.AIModule overrideModule = UnitAIModule.AIModule.None;
+    //public List<object> overrideModuleArgs = new List<object>() {  };
+
     public UnitAIModule.AIModule defaultModule = UnitAIModule.AIModule.BasicAttackAIModule;
     public List<object> defaultAiModuleArgs = new List<object>() { null, true };
 
@@ -46,6 +48,28 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     public void ResetToDefaultModule()
     {
+        //UnitAIModule.AIModule cachedOverrideModule = overrideModule;
+        //List<object> overrideModuleArgs = new List<object>() { };
+        //overrideModuleArgs.AddRange(overrideModuleArgs);
+        //
+        //if (overrideModule == defaultModule)
+        //{
+        //    overrideModule = UnitAIModule.AIModule.None;
+        //    overrideModuleArgs.Clear();
+        //}
+
+        //if (defaultModule != UnitAIModule.AIModule.None)
+        //{
+        //    SetAIModule(defaultModule, defaultAiModuleArgs.ToArray());
+        //    return;
+        //} 
+        //if (inbetweenModule != UnitAIModule.AIModule.None)
+        //{
+        //    SetAIModule(inbetweenModule, inbetweenModuleArgs);
+        //    inbetweenModule = UnitAIModule.AIModule.None;
+        //    inbetweenModuleArgs.Clear();
+        //    return;
+        //}
         SetAIModule(defaultModule, defaultAiModuleArgs.ToArray());
     }
 
@@ -205,17 +229,6 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             }
         }
 
-        //if (actionComponent)
-        //{
-        //    List<ActionComponent.ActionEvent> actionEvents = new List<ActionComponent.ActionEvent>() { 
-        //        // ulong selfId = (ulong)obj[0];
-        //        // ulong targetId = (ulong)obj[1];
-        //        // float damage = (float)obj[2];
-        //        new ActionComponent.ActionEvent(militaryUnit.attack_delay, UnitEventHandler.EventID.OnAttack, new List<object>() { id, 0, militaryUnit.damage })
-        //    };
-        //    actionComponent.SetActionSprite(militaryUnit.attacking, "", actionEvents);
-        //}
-
         if (callVisualUpdate) {
             System.Action action = () =>
             {
@@ -229,12 +242,6 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             };
 
             ResetToDefaultModule();
-            //Transform BasicAttackAIModuleTransform = aiTransformHolder.Find("BasicAttackAIModule");
-            //if (aiModule && aiModule.GetType() == typeof(BasicAttackAIModule))
-            //{
-            //    BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
-            //    basicAttackAIModule.InitializeAI(this, null, true);
-            //}
             DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
         }
     }

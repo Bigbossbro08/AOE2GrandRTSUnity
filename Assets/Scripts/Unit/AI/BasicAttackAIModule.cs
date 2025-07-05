@@ -101,6 +101,10 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             {
                 this.target = targetUnit;
                 SetDesiredState(State.MoveTowardsTarget);
+            } 
+            else
+            {
+                self.ResetToDefaultModule();
             }
         }
     }

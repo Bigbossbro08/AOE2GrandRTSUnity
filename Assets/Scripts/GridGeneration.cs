@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.IO;
 using TMPro;
 using Unity.AI.Navigation;
-using UnityEditor.Rendering.LookDev;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Tilemaps;
@@ -78,7 +77,8 @@ public class GridGeneration : MonoBehaviour
             pixelSize = new Vector2Int(sprite.texture.width, sprite.texture.height);
         }
         //RegenerateMap(GetCoordinatOffseteForRegeneration(tileAmountToRegenerate), tileAmountToRegenerate);
-        StartCoroutine(GenerateChunks());
+        //StartCoroutine(GenerateChunks());
+        GameManager.Instance.IncrementLoadCount();
     }
 
     //

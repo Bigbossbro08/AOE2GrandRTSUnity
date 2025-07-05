@@ -4,6 +4,7 @@ public class UnitAIModule : MonoBehaviour, IDeterministicUpdate, MapLoader.IMapS
 {
     public enum AIModule
     {
+        None,
         BasicAttackAIModule,
         BasicMovementAIModule,
         TargetFollowingMovementAIModule,

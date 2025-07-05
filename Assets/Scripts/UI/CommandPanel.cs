@@ -13,6 +13,26 @@ public class CommandPanelUI : MonoBehaviour
     [SerializeField]
     private Transform context;
 
+    Dictionary<KeyCode, int> KeyCodeToIdMap = new Dictionary<KeyCode, int>() {
+        { KeyCode.Q, 0 },
+        { KeyCode.W, 1 },
+        { KeyCode.E, 2 },
+        { KeyCode.R, 3 },
+        { KeyCode.T, 4 },
+        { KeyCode.A, 5 },
+        { KeyCode.S, 6 },
+        { KeyCode.D, 7 },
+        { KeyCode.F, 8 },
+        { KeyCode.G, 9 },
+        { KeyCode.Z, 10 },
+        { KeyCode.X, 11 },
+        { KeyCode.C, 12 },
+        { KeyCode.V, 13 },
+        { KeyCode.B, 14 },
+    };
+
+    public bool AttackMove = false;
+
     private void Start()
     {
         int counter = 0;
@@ -23,29 +43,33 @@ public class CommandPanelUI : MonoBehaviour
             commandButtons.Add(button);
             counter++;
         }
+
+        // TODO: Figure out command panel type based on selection
+        SetCommands(GetMilitaryUnitCommands());
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Keypad4))
-        {
-            Debug.Log("Setting to military mode");
-            SetCommands(GetMilitaryUnitCommands());
-        }
-        if (Input.GetKeyDown(KeyCode.Keypad5))
-        {
-            Debug.Log("Setting to villager mode");
-            SetCommands(GetVillagerUnitCommands());
-        }
         if (Input.GetKeyDown(KeyCode.Q))
         {
             commandButtons[0].SetVisualStateToPressed();
         }
 
-        if (Input.GetKeyUp(KeyCode.Q))
+        foreach (var keymap in KeyCodeToIdMap)
         {
-            commandButtons[0].SetVisualStateToNormal();
-            commandButtons[0].onClick.Invoke(); // optional
+            if (Input.GetKeyDown(keymap.Key))
+            {
+                int id = keymap.Value;
+                commandButtons[id].SetVisualStateToPressed();
+                //commandButtons[id].onClick.Invoke(); // optional
+            }
+
+            if (Input.GetKeyUp(keymap.Key))
+            {
+                int id = keymap.Value;
+                commandButtons[id].SetVisualStateToNormal();
+                commandButtons[id].onClick.Invoke(); // optional
+            }
         }
     }
 
@@ -84,21 +108,24 @@ public class CommandPanelUI : MonoBehaviour
         attackMove.SlotId = 0;
         attackMove.Icon = attackMoveSprite;
         attackMove.Name = "Attack Move";
-        attackMove.Callback = () => { }; // Implement Attack Move Toggle when pressed
+        attackMove.Callback = () => {
+            Debug.Log($"Clicked for Attack Move");
+            AttackMove = true; 
+        }; // Implement Attack Move Toggle when pressed
 
-        CommandButton.Command patrolMove = new CommandButton.Command();
-        patrolMove.SlotId = 1;
-        patrolMove.Name = "Patrol Move";
-        patrolMove.Callback = () => { }; // Implement Patrol Move Toggle when pressed
-
-        CommandButton.Command normalMove = new CommandButton.Command();
-        normalMove.SlotId = 4;
-        normalMove.Name = "Normal Move";
-        normalMove.Callback = () => { }; // Implement Patrol Move Toggle when pressed
+        //CommandButton.Command patrolMove = new CommandButton.Command();
+        //patrolMove.SlotId = 1;
+        //patrolMove.Name = "Patrol Move";
+        //patrolMove.Callback = () => { }; // Implement Patrol Move Toggle when pressed
+        
+        //CommandButton.Command normalMove = new CommandButton.Command();
+        //normalMove.SlotId = 4;
+        //normalMove.Name = "Normal Move";
+        //normalMove.Callback = () => { }; // Implement Patrol Move Toggle when pressed
 
         commandButtons.Add(attackMove);
-        commandButtons.Add(patrolMove);
-        commandButtons.Add(normalMove);
+        //commandButtons.Add(patrolMove);
+        //commandButtons.Add(normalMove);
 
         return commandButtons;
     }

@@ -14,7 +14,8 @@ public class UnitEventHandler : MonoBehaviour
         OnAttack,
         OnDeath,
         OnActionEnd,
-        OnProjectileAttack
+        OnProjectileAttack,
+        OnCorpseSpawn
     }
 
     void Awake()
@@ -31,6 +32,11 @@ public class UnitEventHandler : MonoBehaviour
         RegisterEvents();
     }
 
+    private void OnDestroy()
+    {
+        UnRegisterEvents();
+    }
+
     const int MAX_EVENT_COUNT = 1000; // For now
 
     private Action<object[]>[] handlers = new Action<object[]>[MAX_EVENT_COUNT];
@@ -41,11 +47,26 @@ public class UnitEventHandler : MonoBehaviour
         RegisterEvent((int)EventID.OnDeath, Event_OnDeath);
         RegisterEvent((int)EventID.OnActionEnd, Event_OnActionEnd);
         RegisterEvent((int)EventID.OnProjectileAttack, Event_OnProjectileAttack);
+        RegisterEvent((int)EventID.OnCorpseSpawn, Event_OnCorpseSpawn);
+    }
+
+    void UnRegisterEvents()
+    {
+        UnRegisterEvent((int)EventID.OnAttack, Event_OnAttack);
+        UnRegisterEvent((int)EventID.OnDeath, Event_OnDeath);
+        UnRegisterEvent((int)EventID.OnActionEnd, Event_OnActionEnd);
+        UnRegisterEvent((int)EventID.OnProjectileAttack, Event_OnProjectileAttack);
+        UnRegisterEvent((int)EventID.OnCorpseSpawn, Event_OnCorpseSpawn);
     }
 
     public void RegisterEvent(int id, Action<object[]> handler)
     {
         handlers[id] += handler;
+    }
+
+    public void UnRegisterEvent(int id, Action<object[]> handler)
+    {
+        handlers[id] -= handler;
     }
 
     Dictionary<string, EventID> nameToId = new() {
@@ -55,13 +76,13 @@ public class UnitEventHandler : MonoBehaviour
         { "OnProjectileAttack", EventID.OnProjectileAttack }
     };
 
-    public void CallEvent(string name, params object[] args)
-    {
-        if (nameToId.TryGetValue(name, out var id))
-        {
-            handlers[(int)id]?.Invoke(args); // O(1) after mapping
-        }
-    }
+    //public void CallEvent(string name, params object[] args)
+    //{
+    //    if (nameToId.TryGetValue(name, out var id))
+    //    {
+    //        handlers[(int)id]?.Invoke(args); // O(1) after mapping
+    //    }
+    //}
 
     public void CallEventByID(EventID eventID, params object[] args)
     {
@@ -165,6 +186,7 @@ public class UnitEventHandler : MonoBehaviour
                             deadUnit.unitDataName = movableUnit.unitDataName;
                             deadUnit.SetVisual(militaryUnit.corpse);
                             UnitManager.Instance.movableUnitPool.Release(movableUnit);
+                            CallEventByID(EventID.OnCorpseSpawn, movableUnit.id, deadUnit.id);
                         }
                     }
                 }
@@ -177,5 +199,13 @@ public class UnitEventHandler : MonoBehaviour
         }
 
         //Debug.Log($"OnActionEnd Event fired and values are {actionEndType}");
+    }
+
+    private void Event_OnCorpseSpawn(object[] obj)
+    {
+        ulong selfId = (ulong)obj[0];
+        ulong corpseId = (ulong)obj[1];
+
+
     }
 }

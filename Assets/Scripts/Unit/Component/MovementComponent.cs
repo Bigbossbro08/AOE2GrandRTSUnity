@@ -138,11 +138,6 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         if (!enabled) enabled = true;
     }
 
-    public bool HasPathToFollow()
-    {
-        return positions.Count > 0;
-    }
-
     public void Stop(bool invokeOnStop = true)
     {
         if (rb)

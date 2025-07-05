@@ -138,7 +138,7 @@ public class PathfinderTest : MonoBehaviour
 
             string arguments = $"{offset.x} {offset.y} {mapSize}";
 
-            PythonComponent pythonComponent = GameManager.Instance.PythonComponent;
+            PythonComponent pythonComponent = null;// GameManager.Instance.PythonComponent;
             if (pythonComponent)
             {
                 pythonComponent.unitDataList.Clear();

@@ -45,7 +45,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   attackSprite: 
-  damage: 0
   attackRange: 0
   attackDelay: 0
   currentAttackDelay: 0
@@ -540,7 +539,8 @@ MonoBehaviour:
   unitTypeComponent: {fileID: 6412636851807375680}
   aiModule: {fileID: 5196839320851393636}
   aiTransformHolder: {fileID: 9174888504552720271}
-  defaultModule: 0
+  inbetweenModule: 0
+  defaultModule: 1
   DeterministicVisualUpdater: {fileID: 1962381057880631117}
   standSprite: idle_archer
   walkSprite: move_archer
@@ -658,6 +658,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6df8980fbe0415d46a77bdd9cdfe0dd6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  damageData:
+    attackValues: []
+    armorValues: []
 --- !u!1 &5404947798866862044
 GameObject:
   m_ObjectHideFlags: 0

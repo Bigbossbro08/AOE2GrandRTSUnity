@@ -22,6 +22,7 @@ public class CameraMovement : MonoBehaviour
 
 #if UNITY_EDITOR
         bool isGameViewFocused = EditorWindow.mouseOverWindow != null &&
+                                 EditorWindow.mouseOverWindow.titleContent != null &&
                                  EditorWindow.mouseOverWindow.titleContent.text == "Game";
         return !isInsideScreen || !isGameViewFocused;
 #else

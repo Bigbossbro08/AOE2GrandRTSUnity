@@ -19,10 +19,15 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public PythonComponent PythonComponent;
+    public CameraMovement CameraHandler;
 
     public int loadAmount = 0;
     int targetAmountToLoad = 3;
+
+    public bool IsLoaded()
+    {
+        return loadAmount >= targetAmountToLoad;
+    }
 
     public void IncrementLoadCount()
     {
@@ -37,7 +42,7 @@ public class GameManager : MonoBehaviour
             IncrementLoadCount();
             //MapLoader.Instance.enabled = true;
         }
-        if (loadAmount >= targetAmountToLoad)
+        if (IsLoaded())
         {
             DeterministicUpdateManager.Instance.enabled = true;
         }

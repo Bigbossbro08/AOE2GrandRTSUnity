@@ -14,9 +14,9 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
     State currentState;
     State desiredState;
     protected MovableUnit self;
-    Vector3 position;
-    Vector3 offset;
-    Vector3? startPosition;
+    internal Vector3 position;
+    internal Vector3 offset;
+    internal Vector3? startPosition;
 
     void DoPathfind()
     {
@@ -70,7 +70,7 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
 
     private void Process_WaitingForPath()
     {
-        if (!self.movementComponent.HasPathToFollow())
+        if (!self.movementComponent.HasPathPositions())
         {
             return;
         }
