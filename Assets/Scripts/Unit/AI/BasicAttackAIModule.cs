@@ -218,12 +218,9 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     void PerformAttackAction()
     {
-        if (!self.actionComponent.IsPlayingAction())
-        {
-            self.movementComponent.Stop();
-            self.actionComponent.StartAction();
-            combatComponent.StartDelay();
-        }
+        self.movementComponent.Stop();
+        self.actionComponent.StartAction();
+        combatComponent.StartDelay();
     }
 
     void State_MoveTowardsTarget(float deltaTime)
@@ -278,10 +275,16 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     bool CanPerformAttack()
     {
+        self.movementComponent.Stop();
         if (combatComponent)
         {
             return !combatComponent.IsAttackDelayInProgress();
         }
+        if (self.actionComponent.IsPlayingAction())
+        {
+            return false;
+        }
+
         return true;
     }
 
@@ -298,6 +301,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         //if ((newTargetPosition - self.transform.position).sqrMagnitude > thresholdForMovingStateSqr)
         if (!IsTargetWithinRange())
         {
+            Debug.Log("Outt of range???");
             Vector3 diff = newTargetPosition - self.transform.position;
             SetDesiredState(State.MoveTowardsTarget);
             return;

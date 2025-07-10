@@ -4,7 +4,7 @@ Shader "Custom/PlayerColorTest"
     Properties
     {
         _MainTex ("Base Texture", 2D) = "white" {}
-        _MaskTex ("Mask Texture", 2D) = "white" {}
+        _MaskTex ("Mask Texture", 2D) = "black" {}
         _PlayerColor ("Player Color", Color) = (1, 0, 0, 1)
     }
     SubShader
@@ -19,8 +19,8 @@ Shader "Custom/PlayerColorTest"
             "RenderType"="Transparent"
             "RenderPipeline"="UniversalRenderPipeline" 
         }
-        ZWrite On
-        ZTest LEqual
+        //ZWrite On
+        //ZTest LEqual
 
         Pass
         {
@@ -28,8 +28,11 @@ Shader "Custom/PlayerColorTest"
             Tags { "LightMode"="UniversalForward" }
 
             Blend SrcAlpha OneMinusSrcAlpha
-            ZWrite Off
+            //ZWrite Off
             Cull Off
+            
+            ZTest Always
+            ZWrite Off
 
             HLSLPROGRAM
             #pragma vertex vert

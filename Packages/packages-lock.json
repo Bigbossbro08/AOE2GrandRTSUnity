@@ -1,5 +1,19 @@
 {
   "dependencies": {
+    "com.frozenstorminteractive.assimp": {
+      "version": "file:E:/repos/assimpnet-unity-4.1.1/com.frozenstorminteractive.assimp.tar.gz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {}
+    },
+    "com.frozenstorminteractive.assimp.windows": {
+      "version": "file:E:/repos/assimpnet-unity-4.1.1/com.frozenstorminteractive.assimp.windows.tar.gz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {
+        "com.frozenstorminteractive.assimp": "4.1.0"
+      }
+    },
     "com.unity.2d.animation": {
       "version": "10.1.4",
       "depth": 1,

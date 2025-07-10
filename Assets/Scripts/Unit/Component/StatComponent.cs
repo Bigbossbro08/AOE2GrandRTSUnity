@@ -4,29 +4,42 @@ using System.Collections.Generic;
 public class StatComponent : MonoBehaviour
 {
     private float health = 45f;
-    private float armor = 1f;
+    private float maxHealth = 45f;
 
-    public float GetHealth() {  return health; }
+    public float GetHealth() { return health; }
     public UnitManager.UnitJsonData.DamageData damageData = new UnitManager.UnitJsonData.DamageData();
+    public System.Action<ulong> OnDeathCallback = (id) => {
+        
+    };
 
     private void OnEnable()
     {
-        health = 45f;
+        //health = 45f;
     }
 
-    public void SetHealth(float health, MovableUnit unit = null)
+    public float GetMaxHealth() { return maxHealth; }
+
+    public void SetHealth(float health, MovableUnit unit = null, float? maxHealth = null)
     {
+        if (maxHealth == null)
+        {
+            this.maxHealth = health;
+        }
+
         float newHealth = health;
         if (newHealth <= 0.0f)
         {
             if (IsUnitAliveOrValid(unit))
+            {
+                // Global
                 UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnDeath, unit.id);
+            }
             newHealth = 0.0f;
         }
         this.health = newHealth;
     }
 
-    public static void DamageUnit(MovableUnit targetUnit, UnitManager.UnitJsonData.DamageData damageData)
+    public static bool DamageUnit(MovableUnit targetUnit, UnitManager.UnitJsonData.DamageData damageData)
     {
         float targetHealth = targetUnit.statComponent.GetHealth();
 
@@ -34,6 +47,7 @@ public class StatComponent : MonoBehaviour
 
         targetHealth -= damageGiven;
         targetUnit.statComponent.SetHealth(targetHealth, targetUnit);
+        return targetUnit.statComponent.GetHealth() == 0;
     }
 
     public static bool IsUnitAliveOrValid(MovableUnit unit)

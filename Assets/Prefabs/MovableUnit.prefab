@@ -536,14 +536,15 @@ MonoBehaviour:
   statComponent: {fileID: 3022484260400165635}
   movementComponent: {fileID: 9152001189729917415}
   actionComponent: {fileID: 1853550513862272935}
+  _rigidbody: {fileID: 3986329756883083697}
   unitTypeComponent: {fileID: 6412636851807375680}
   aiModule: {fileID: 5196839320851393636}
   aiTransformHolder: {fileID: 9174888504552720271}
-  inbetweenModule: 0
   defaultModule: 1
   DeterministicVisualUpdater: {fileID: 1962381057880631117}
   standSprite: idle_archer
   walkSprite: move_archer
+  meshCollider: {fileID: 0}
 --- !u!114 &9152001189729917415
 MonoBehaviour:
   m_ObjectHideFlags: 0

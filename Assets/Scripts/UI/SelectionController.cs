@@ -97,7 +97,7 @@ public class SelectionController : MonoBehaviour
 
     public static RaycastHit? FindProperHit(Vector3 targetPosition, int navAreaMask)
     {
-        int layer = ~(1 << 2 | 1 << 3 | 1 << 6);
+        int layer = ~(1 << 2 | 1 << 3 | 1 << 6 | 1 << 30);
         Ray ray = new Ray(targetPosition + Vector3.up * 100, Vector3.down * 200);// Camera.main.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit, float.MaxValue, layer))
         {
@@ -191,7 +191,7 @@ public class SelectionController : MonoBehaviour
                         position = navHit.position;
                     }
                 }
-                if (ids.Count > 1)
+                if (ids.Count > 0)
                 {
                     MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
                     moveUnitsCommand.action = MoveUnitsCommand.commandName;
@@ -301,6 +301,7 @@ public class SelectionController : MonoBehaviour
             }
         }
         selectionPanel.SetupUnitSelection(selectedUnits);
+        commandPanelUI.FigureoutPanelFromSelection(selectedUnits);
         //Debug.Log("Selected Units: " + hits.Length);
     }
 

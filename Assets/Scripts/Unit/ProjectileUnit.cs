@@ -1,3 +1,4 @@
+using Codice.CM.WorkspaceServer;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,7 +7,7 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
     [SerializeField] private Rigidbody _rigidbody;
     //[SerializeField] private Transform start;
     //[SerializeField] private Transform end;
-    MovableUnit sourceUnit = null;
+    Unit sourceUnit = null;
     [SerializeField] private Collider _collider;
     UnitManager.UnitJsonData.DamageData damageData = new UnitManager.UnitJsonData.DamageData();
 
@@ -25,6 +26,8 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
         _collider.enabled = false;
         DeterministicUpdateManager.Instance.Unregister(this);
     }
+
+    public Unit GetSourceUnit() { return sourceUnit; }
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
@@ -70,9 +73,15 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
 
     private void OnTriggerEnter(Collider other)
     {
+        if (other.transform == this.transform) { return; }
         if (other.transform == sourceUnit.transform) return;
+        if (other.TryGetComponent(out TriggerHelperForCapsuleCollider triggerHelperForCapsuleCollider))
+        {
+            return;
+        }
         if (other.TryGetComponent(out ProjectileUnit projectileUnit))
         {
+            enabled = false;
             return;
         }
         if (other.TryGetComponent(out MovableUnit otherMovableUnit))
@@ -86,7 +95,7 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
             // Return to pool
             gameObject.SetActive(false);
         }
-        NativeLogger.Log($"Collision hit at: {_collider.name}");
+        NativeLogger.Log($"Collision hit at: {other.name}");
         //_rigidbody.isKinematic = true;
         //_collider.enabled = false;
         enabled = false;

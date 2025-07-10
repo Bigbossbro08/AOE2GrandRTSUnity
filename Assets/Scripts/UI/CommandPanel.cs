@@ -45,16 +45,12 @@ public class CommandPanelUI : MonoBehaviour
         }
 
         // TODO: Figure out command panel type based on selection
-        SetCommands(GetMilitaryUnitCommands());
+        //SetCommands(GetMilitaryUnitCommands());
+        SetCommands(GetNoCommands());
     }
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Q))
-        {
-            commandButtons[0].SetVisualStateToPressed();
-        }
-
         foreach (var keymap in KeyCodeToIdMap)
         {
             if (Input.GetKeyDown(keymap.Key))
@@ -99,6 +95,11 @@ public class CommandPanelUI : MonoBehaviour
         }
     }
 
+    public List<CommandButton.Command> GetNoCommands()
+    {
+        return new List<CommandButton.Command>(); ;
+    }
+
     public List<CommandButton.Command> GetMilitaryUnitCommands()
     {
         // TODO: Add proper commands
@@ -130,6 +131,22 @@ public class CommandPanelUI : MonoBehaviour
         return commandButtons;
     }
 
+    public List<CommandButton.Command> GetShipCommands()
+    {
+        List<CommandButton.Command> commandButtons = new List<CommandButton.Command>();
+
+        CommandButton.Command dockOnShore = new CommandButton.Command();
+        dockOnShore.SlotId = 0;
+        dockOnShore.Icon = attackMoveSprite;
+        dockOnShore.Name = "Ship Dock";
+        dockOnShore.Callback = () => {
+            Debug.Log("$Clicked for docking on shore");
+            AttackMove = true;
+        };
+        commandButtons.Add(dockOnShore);
+        return commandButtons;
+    }
+
     public List<CommandButton.Command> GetVillagerUnitCommands()
     {
         // TODO: Add proper commands
@@ -149,5 +166,50 @@ public class CommandPanelUI : MonoBehaviour
         commandButtons.Add(repairMove);
 
         return commandButtons;
+    }
+
+    internal void FigureoutPanelFromSelection(List<Unit> selectedUnits)
+    {
+        if (selectedUnits == null || selectedUnits.Count == 0)
+        {
+            SetCommands(GetNoCommands());
+            return;
+        }
+
+        // 0 = no command.
+        // 1 = military command
+        // 2 = ship command
+        int useCommandType = 0;
+
+        foreach (Unit unit in selectedUnits)
+        {
+            if (unit.GetType() == typeof(MovableUnit))
+            {
+                MovableUnit movableUnit = (MovableUnit)unit;
+                if (movableUnit.shipData.isShipMode)
+                {
+                    useCommandType = 2;
+                    return;
+                }
+                if (movableUnit.unitTypeComponent.GetType() == typeof(CombatComponent))
+                {
+                    useCommandType = 1;
+                }
+            }
+        }
+
+        switch (useCommandType)
+        {
+            case 1:
+                {
+                    SetCommands(GetMilitaryUnitCommands());
+                }
+                break;
+            case 2:
+                {
+                    SetCommands(GetShipCommands());
+                }
+                break;
+        }
     }
 }

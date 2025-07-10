@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,6 +13,7 @@ public class SelectionPanel : MonoBehaviour
     private List<CommandButton> selectionButtons = new List<CommandButton>(61);
 
     private List<Unit> selectedUnits = new List<Unit>();
+    private List<MovableUnit> movableUnits = new List<MovableUnit>();
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -19,6 +21,33 @@ public class SelectionPanel : MonoBehaviour
         InitializeSelectionButtons();
         UpdateGridLayout();
     }
+
+    //void OnPostRender()
+    //{
+    //    hpMaterial.SetPass(0);
+    //    GL.Begin(GL.QUADS);
+    //
+    //    foreach (var unit in movableUnits)
+    //    {
+    //        Vector3 screenPos = Camera.main.WorldToScreenPoint(unit.transform.position + Vector3.up * 2);
+    //        float hpRatio = unit.statComponent.GetHealth() / (float)unit.statComponent.GetMaxHealth();
+    //
+    //        float width = 50;
+    //        float height = 5;
+    //
+    //        float left = screenPos.x - width / 2;
+    //        float right = left + width * hpRatio;
+    //        float top = screenPos.y;
+    //        float bottom = top - height;
+    //
+    //        GL.Vertex3(left, bottom, 0);
+    //        GL.Vertex3(right, bottom, 0);
+    //        GL.Vertex3(right, top, 0);
+    //        GL.Vertex3(left, top, 0);
+    //    }
+    //
+    //    GL.End();
+    //}
 
     void InitializeSelectionButtons()
     {
@@ -67,9 +96,27 @@ public class SelectionPanel : MonoBehaviour
     public void SetupUnitSelection(List<Unit> units)
     {
         ClearSelectionButtons();
+
+        List<Unit> filteredUnits = new List<Unit>();
         for (int i = 0; i < units.Count && i < 60; i++)
         {
             var unit = units[i];
+            if (unit.GetType() == typeof(MovableUnit))
+            {
+                MovableUnit movableUnit = (MovableUnit)unit;
+                if (movableUnit.shipData.isShipMode == true)
+                {
+                    filteredUnits.Clear();
+                    filteredUnits.Add(unit);
+                    break;
+                }
+                filteredUnits.Add(unit);
+            }
+        }
+
+        for (int i = 0; i < filteredUnits.Count && i < 60; i++)
+        {
+            Unit unit = filteredUnits[i];
             
             // TODO: make unit to have sprite
             if (unit.GetType() == typeof(MovableUnit))
@@ -90,14 +137,34 @@ public class SelectionPanel : MonoBehaviour
                 Unit capturedUnit = unit;
                 CommandButton capturedBtn = btn;
 
+                // Define the death callback
+                Action<ulong> deathCallback = null;
+
+                System.Action RemoveSelectedUnit = () =>
+                {
+                    if (movableUnit)
+                    {
+                        movableUnit.statComponent.OnDeathCallback -= deathCallback;
+                    }
+                    DeactivateButton(capturedBtn);
+                    selectedUnits.Remove(capturedUnit);
+                };
+
+                // Assign deathCallback AFTER RemoveSelectedUnit is defined
+                deathCallback = (id) => RemoveSelectedUnit?.Invoke();
+
                 btn.onClick.RemoveAllListeners();
                 btn.onClick.AddListener(() =>
                 {
-                    DeactivateButton(capturedBtn);
-                    selectedUnits.Remove(capturedUnit);
+                    RemoveSelectedUnit?.Invoke();
                 });
+
+                if (movableUnit)
+                    movableUnit.statComponent.OnDeathCallback += deathCallback;
+
                 selectedUnits.Add(unit);
                 Debug.Log("Setting up id: " + btn.gameObject.name);
+                
             }
         }
         UpdateGridLayout();

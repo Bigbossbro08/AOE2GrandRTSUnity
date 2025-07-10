@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
@@ -67,6 +68,67 @@ public class UnitManager : MonoBehaviour
             public List<ArmorEntry> armorValues = new();
         }
 
+        [System.Serializable]
+        public class ShipData
+        {
+            public class NavLinkData
+            {
+                [JsonProperty("start")]
+                public CommonStructures.SerializableVector3 start = new();
+
+                [JsonProperty("end")]
+                public CommonStructures.SerializableVector3 end = new();
+
+                [JsonProperty("area_type")]
+                public int area_type = 0;
+
+                [JsonProperty("width")]
+                public float width = 1.0f;
+            }
+
+            [JsonProperty("deck_mesh_name")]
+            public string deck_mesh_name = null;
+
+            [JsonProperty("deck_mesh_size")]
+            public float deck_mesh_size = 1f;
+
+            [JsonProperty("navmesh_name")]
+            public string navmesh_name = null;
+
+            [JsonProperty("navmesh_size")]
+            public float navmesh_size = 1f;
+
+            [JsonProperty("navlinks")]
+            public List<NavLinkData> navlinks = new();
+        }
+
+        [System.Serializable]
+        public class CollisionData
+        {
+            // For Convex Mesh
+            [JsonProperty("name")]
+            public string name = null;
+
+            // For Convex Mesh
+            [JsonProperty("size")]
+            public float? size = 1f;
+
+            // For Capsule or Sphere
+            [JsonProperty("radius")]
+            public float? radius = 0.14f;
+
+            // For Capsule
+            [JsonProperty("height")]
+            public float? height = 0.54f;
+        }
+
+        [System.Serializable]
+        public class LockedAngle
+        {
+            [JsonProperty("direction_count")]
+            public int directionCount = 8;
+        }
+
         [JsonProperty("hp")]
         public float hp = 45.0f;
 
@@ -108,6 +170,15 @@ public class UnitManager : MonoBehaviour
 
         [JsonProperty("corpse")]
         public string corpse = "archer_corpse";
+
+        [JsonProperty("ship_data")]
+        public ShipData ship_data = null;
+
+        [JsonProperty("collision")]
+        public CollisionData collisionData = null;
+
+        [JsonProperty("locked_angle")]
+        public LockedAngle lockedAngle = null;
     }
 
     public static UnitManager Instance { get; private set; }
@@ -117,7 +188,7 @@ public class UnitManager : MonoBehaviour
     public static ulong counter = 1;
     public static ulong crowdIDCounter = 0;
 
-    public ObjectPool<MovableUnit> movableUnitPool;
+    private ObjectPool<MovableUnit> movableUnitPool;
     public ObjectPool<ShipUnit> shipUnitPool;
     public ObjectPool<DeadUnit> deadUnitPool;
     public ObjectPool<ProjectileUnit> projectileUnitPool;
@@ -259,9 +330,25 @@ public class UnitManager : MonoBehaviour
     #endregion
 
     #region MovableUnit
+
+    System.Action<MovableUnit> PreSpawnAction = null;
     private void GetMovableUnitfromPool(MovableUnit unit)
     {
+        PreSpawnAction?.Invoke(unit);
         unit.gameObject.SetActive(true);
+        PreSpawnAction = null;
+        UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnUnitSpawn, unit.id);
+    }
+
+    public MovableUnit GetMovableUnitFromPool(System.Action<MovableUnit> PreSpawnAction = null)
+    {
+        this.PreSpawnAction = PreSpawnAction;
+        return UnitManager.Instance.movableUnitPool.Get();
+    }
+
+    public void ReleaseMovableUnitFromPool(MovableUnit unit)
+    {
+        UnitManager.Instance.movableUnitPool.Release(unit);
     }
 
     private MovableUnit SpawnMovableUnit()
@@ -277,6 +364,8 @@ public class UnitManager : MonoBehaviour
             units.Remove(unit.id);
         }
         unit.gameObject.SetActive(false);
+
+        UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnUnitRemove, unit.id);
         //movableUnitPool.Release(unit);
     }
 

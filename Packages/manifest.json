@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "com.frozenstorminteractive.assimp": "file:E:/repos/assimpnet-unity-4.1.1/com.frozenstorminteractive.assimp.tar.gz",
+    "com.frozenstorminteractive.assimp.windows": "file:E:/repos/assimpnet-unity-4.1.1/com.frozenstorminteractive.assimp.windows.tar.gz",
     "com.unity.ai.navigation": "2.0.6",
     "com.unity.collab-proxy": "2.6.0",
     "com.unity.feature.2d": "2.0.1",

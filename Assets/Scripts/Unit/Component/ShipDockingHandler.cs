@@ -25,7 +25,7 @@ public class ShipDockingHandler : MonoBehaviour, IDeterministicUpdate, MapLoader
     private void OnEnable()
     {
         DeterministicUpdateManager.Instance.Register(this);
-        m_MovementComponent.OnStopMoving += M_MovementComponent_OnStopMoving;
+        //m_MovementComponent.OnStopMoving += M_MovementComponent_OnStopMoving;
         //m_MovementComponent.controlRotation = false;
         m_MovementComponent.RemoveState(MovementComponent.MovementFlag.ControlRotation);
     }
@@ -43,7 +43,7 @@ public class ShipDockingHandler : MonoBehaviour, IDeterministicUpdate, MapLoader
     {
         DeterministicUpdateManager.Instance.Unregister(this);
         m_MovementComponent.SetState(MovementComponent.MovementFlag.ControlRotation);
-        m_MovementComponent.OnStopMoving -= M_MovementComponent_OnStopMoving;
+        //m_MovementComponent.OnStopMoving -= M_MovementComponent_OnStopMoving;
     }
 
     public void SetTargetPointToDock(Vector3 targetPointToDock)

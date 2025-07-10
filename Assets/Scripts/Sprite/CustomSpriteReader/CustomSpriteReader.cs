@@ -27,6 +27,7 @@ public class CustomSpriteReader : MonoBehaviour
     float angleOffset = 0.0f;
     float height = 0.0f;
     int currentAngleIndex = 0;
+    int angleCount = 8;
 
     void Start()
     {
@@ -41,8 +42,9 @@ public class CustomSpriteReader : MonoBehaviour
         if (spriteReturnData != null)
         {
             angleOffset = spriteReturnData.rotation_offset;
+            angleCount = spriteReturnData.sprites.Count;
             float angle = mainTransform.eulerAngles.y + angleOffset;
-            int newAngleIndex = CustomSpriteLoader.GetFixed8DirectionAngle(angle);
+            int newAngleIndex = CustomSpriteLoader.GetFixed8DirectionAngle(angle, angleCount);
             currentAngleIndex = newAngleIndex;
             sprites = spriteReturnData.sprites[currentAngleIndex];
             height = spriteReturnData.height;
@@ -98,7 +100,8 @@ public class CustomSpriteReader : MonoBehaviour
         }
         bool isValid = false;
         float angle = mainTransform.eulerAngles.y + angleOffset;
-        int newAngleIndex = CustomSpriteLoader.GetFixed8DirectionAngle(angle);
+        int newAngleIndex = CustomSpriteLoader.GetFixed8DirectionAngle(angle, angleCount);
+        
         if (newAngleIndex != currentAngleIndex || forceUpdate)
         {
             currentAngleIndex = newAngleIndex;

@@ -15,7 +15,10 @@ public class UnitEventHandler : MonoBehaviour
         OnDeath,
         OnActionEnd,
         OnProjectileAttack,
-        OnCorpseSpawn
+        OnCorpseSpawn,
+        OnUnitSpawn,
+        OnUnitRemove,
+        OnUnitKilled
     }
 
     void Awake()
@@ -48,6 +51,9 @@ public class UnitEventHandler : MonoBehaviour
         RegisterEvent((int)EventID.OnActionEnd, Event_OnActionEnd);
         RegisterEvent((int)EventID.OnProjectileAttack, Event_OnProjectileAttack);
         RegisterEvent((int)EventID.OnCorpseSpawn, Event_OnCorpseSpawn);
+        RegisterEvent((int)EventID.OnUnitSpawn, Event_OnUnitSpawn);
+        RegisterEvent((int)EventID.OnUnitRemove, Event_OnUnitRemove);
+        RegisterEvent((int)EventID.OnUnitKilled, Event_OnUnitKilled);
     }
 
     void UnRegisterEvents()
@@ -57,6 +63,9 @@ public class UnitEventHandler : MonoBehaviour
         UnRegisterEvent((int)EventID.OnActionEnd, Event_OnActionEnd);
         UnRegisterEvent((int)EventID.OnProjectileAttack, Event_OnProjectileAttack);
         UnRegisterEvent((int)EventID.OnCorpseSpawn, Event_OnCorpseSpawn);
+        UnRegisterEvent((int)EventID.OnUnitSpawn, Event_OnUnitSpawn);
+        UnRegisterEvent((int)EventID.OnUnitRemove, Event_OnUnitRemove);
+        UnRegisterEvent((int)EventID.OnUnitKilled, Event_OnUnitKilled);
     }
 
     public void RegisterEvent(int id, Action<object[]> handler)
@@ -99,16 +108,58 @@ public class UnitEventHandler : MonoBehaviour
 
     private static void Event_OnAttack(object[] obj)
     {
-        ulong selfId = (ulong)obj[0];
-        ulong targetId = (ulong)obj[1];
-        if (selfId == 0 || targetId == 0) return;
-        UnitManager.UnitJsonData.DamageData damageData = (UnitManager.UnitJsonData.DamageData)obj[2];
-        Unit targetUnit = UnitManager.Instance.GetUnit(targetId);
-        if (targetUnit && targetUnit.GetType() == typeof(MovableUnit))
+        if (obj == null || obj.Length < 3)
         {
-            StatComponent.DamageUnit((MovableUnit)targetUnit, damageData);
+            NativeLogger.Error("Event_OnAttack received invalid arguments.");
+            return;
         }
-        //NativeLogger.Log($"OnAttack Event fired and values are {selfId}, {targetId}, {damage}");
+
+        if (!(obj[0] is ulong selfId) || selfId == 0 ||
+            !(obj[1] is ulong targetId) || targetId == 0 ||
+            !(obj[2] is UnitManager.UnitJsonData.DamageData damageData))
+        {
+            NativeLogger.Error("Event_OnAttack received invalid or malformed parameters.");
+            return;
+        }
+
+        Unit targetUnit = UnitManager.Instance.GetUnit(targetId);
+
+        if (targetUnit is not MovableUnit movableTarget)
+        {
+            NativeLogger.Error("Event_OnAttack called on invalid target unit type.");
+            return;
+        }
+
+        if (!StatComponent.DamageUnit(movableTarget, damageData))
+        {
+            // Target did not die, so nothing to report.
+            return;
+        }
+
+        // Handle the kill event.
+        Unit killerUnit = GetKillerUnit(selfId);
+
+        if (killerUnit != null)
+        {
+            Instance.CallEventByID(EventID.OnUnitKilled, killerUnit.id, targetId);
+        }
+        else
+        {
+            NativeLogger.Warning($"Unit killed by unknown source. selfId: {selfId}, targetId: {targetId}");
+        }
+    }
+
+    private static Unit GetKillerUnit(ulong selfId)
+    {
+        var projectile = UnitManager.Instance.GetUnit(selfId) as ProjectileUnit;
+
+        if (projectile != null)
+        {
+            var source = projectile.GetSourceUnit();
+            return source ?? projectile;
+        }
+
+        return UnitManager.Instance.GetUnit(selfId);
     }
 
     private void Event_OnProjectileAttack(object[] obj)
@@ -135,9 +186,12 @@ public class UnitEventHandler : MonoBehaviour
                 float time = distance / velocitySpeed;
                 //float time = 1.0f;
                 // TODO: make it more data based
-                Vector3 startPosition = selfMovableUnit.transform.TransformPoint(combatComponent.projectile_offset != null ? combatComponent.projectile_offset.Value : Vector3.zero);
+                Vector3 projectile_offset = combatComponent.projectile_offset != null ? combatComponent.projectile_offset.Value : Vector3.zero;
+                Vector3 startPosition = selfMovableUnit.transform.TransformPoint(projectile_offset);
+                float enemyHeight = 0.35f;
                 // TODO: make accuracy more data based
-                Vector3 targetPosition = ProjectileUnit.GetInaccurateTarget(startPosition, targetUnit.transform.position, 80, 15);
+                Vector3 targetPosition = ProjectileUnit.GetInaccurateTarget(startPosition, targetUnit.transform.position + Vector3.up * enemyHeight, 80, 5);
+                //NativeLogger.Log($" ");
                 ProjectileUnit projectile = UnitManager.Instance.projectileUnitPool.Get();
                 projectile.SetProjectileData(selfMovableUnit, damage, combatComponent.projectile_unit);
                 projectile.LaunchWithVelocity(startPosition, targetPosition, time);
@@ -185,7 +239,9 @@ public class UnitEventHandler : MonoBehaviour
                             deadUnit.transform.rotation = movableUnit.transform.rotation;
                             deadUnit.unitDataName = movableUnit.unitDataName;
                             deadUnit.SetVisual(militaryUnit.corpse);
-                            UnitManager.Instance.movableUnitPool.Release(movableUnit);
+                            movableUnit.statComponent.OnDeathCallback?.Invoke(movableUnit.id);
+                            UnitManager.Instance.ReleaseMovableUnitFromPool(movableUnit);
+                            //UnitManager.Instance.movableUnitPool.Release(movableUnit);
                             CallEventByID(EventID.OnCorpseSpawn, movableUnit.id, deadUnit.id);
                         }
                     }
@@ -205,7 +261,23 @@ public class UnitEventHandler : MonoBehaviour
     {
         ulong selfId = (ulong)obj[0];
         ulong corpseId = (ulong)obj[1];
+    }
 
+    private void Event_OnUnitSpawn(object[] obj)
+    {
+        ulong selfId = (ulong)obj[0];
+    }
 
+    private void Event_OnUnitRemove(object[] obj)
+    {
+        ulong selfId = (ulong)obj[0];
+    }
+
+    private void Event_OnUnitKilled(object[] obj)
+    {
+        ulong selfId = (ulong)obj[0];
+        ulong targetId = (ulong)obj[1];
+
+        NativeLogger.Log($"{selfId} has killed {targetId}");
     }
 }

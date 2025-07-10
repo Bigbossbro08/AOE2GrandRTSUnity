@@ -163,6 +163,7 @@ public class MoveUnitsCommand : InputCommand
             {
                 startPosition = unit.transform.position;
             }
+            movableUnit.shipData.SetDockedMode(false);
             movableUnit.SetAIModule(IsAttackMove ? UnitAIModule.AIModule.AttackMoveAIModule : UnitAIModule.AIModule.BasicMovementAIModule,
                 position, newCrowdID, offset, startPosition);
             //movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID);

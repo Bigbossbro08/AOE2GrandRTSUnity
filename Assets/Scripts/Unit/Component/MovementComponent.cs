@@ -44,8 +44,9 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     public float movementSpeed = 0.96f;
     public float rotationSpeed = 5.0f;
 
+    private float eulerAnglesY = 0.0f;
     [SerializeField] private Rigidbody rb;
-    [SerializeField] private CapsuleCollider solidCollider;
+    [SerializeField] public Collider solidCollider;
     [SerializeField] private Unit unit;
 
     public enum State
@@ -63,8 +64,10 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         IsWater = 1 << 2,
         IsAutoReverseable = 1 << 3,
         CanApplyBoidsAvoidance = 1 << 4,
+        LockedRotation = 1 << 5,
     }
 
+    public int directionCount = 8;
     public MovementFlag flags;
 
     public ulong crowdID = 0;
@@ -74,6 +77,17 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     List<ulong> idsToIgnore = new List<ulong>();
 
     List<Vector3> positions = new List<Vector3>();
+
+    public enum PathfindingStatus { 
+        NoPathfindingCalled,
+        RequestedForPathfinding,
+        CalledForCancellingOfPathfinding
+    }
+
+    private PathfindingStatus pathfindingStatus = PathfindingStatus.NoPathfindingCalled;
+
+    public System.Action<State> OnMovementStateChangeCallback = (state) => { };
+    public System.Action OnMoving = () => { };
 
     public void IncrementBlockBoidsCounter()
     {
@@ -96,13 +110,6 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         conditionToActivateRaycast--;
     }
 
-    public delegate void OnStartMovingDelegate();
-    public event OnStartMovingDelegate OnStartMoving;
-    public delegate void OnStopMovingDelegate();
-    public event OnStopMovingDelegate OnStopMoving;
-    public delegate void OnMovingDelegate();
-    public event OnMovingDelegate OnMoving;
-
     // Check if a specific flag is set
     public bool HasState(MovementFlag state)
     {
@@ -121,6 +128,13 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         flags &= ~state;
     }
 
+    private void ChangeState(State state)
+    {
+        if (movementState == state) return;
+        OnMovementStateChangeCallback?.Invoke(state);
+        movementState = state;
+    }
+
     public void SetPositionData(List<Vector3> newPositions, bool notInvokeMove = false)
     {
         positions.Clear();
@@ -129,30 +143,39 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             return;
         }
         positions.AddRange(newPositions);
-        if (!notInvokeMove) 
-            OnStartMoving?.Invoke();
-        
-        if (movementState == State.Idle)
-            movementState = State.Moving;
-        
+        //if (!notInvokeMove) 
+        //    OnStartMoving?.Invoke();
+
+        //if (movementState == State.Idle)
+        //    movementState = State.Moving;
+        ChangeState(State.Moving);
+
+
         if (!enabled) enabled = true;
     }
 
     public void Stop(bool invokeOnStop = true)
     {
+        if (pathfindingStatus == PathfindingStatus.RequestedForPathfinding)
+        {
+            pathfindingStatus = PathfindingStatus.CalledForCancellingOfPathfinding;
+        }
+
+        if (positions.Count > 0)
+        {
+            //if (invokeOnStop)
+            //    OnStopMoving?.Invoke(); 
+
+            positions.Clear();
+        }
+
         if (rb)
         {
-            rb.linearVelocity = Vector3.zero;
+            if (!rb.isKinematic)
+                rb.linearVelocity = Vector3.zero;
         }
         if (enabled)
         {
-            if (positions.Count > 0)
-            {
-                //if (invokeOnStop)
-                //    OnStopMoving?.Invoke(); 
-
-                positions.Clear();
-            }
             if (movementState == State.Moving)
                 movementState = State.Idle;
             enabled = false;
@@ -174,6 +197,10 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     {
         Vector3 diff = newPosition - oldPosition;
         float yAngle = transform.localEulerAngles.y;
+        if (HasState(MovementFlag.LockedRotation))
+        {
+            yAngle = eulerAnglesY;
+        }
         if (diff.sqrMagnitude > 0)
         {
             diff = diff.normalized; 
@@ -182,7 +209,19 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             if (isAutoReversable)
                 yAngle = ShouldMoveForward(transform.localEulerAngles.y, yAngle) ? yAngle : yAngle + 180;
             float rotationDelta = rotationSpeed * deltaTime;
-            transform.localEulerAngles = new Vector3(0, Mathf.MoveTowardsAngle(transform.localEulerAngles.y, yAngle, rotationDelta), 0);
+            float finalEulerAnglesY = eulerAnglesY;
+            if (HasState(MovementFlag.LockedRotation))
+            {
+                eulerAnglesY = Mathf.MoveTowardsAngle(eulerAnglesY, yAngle, rotationDelta);
+                finalEulerAnglesY = Utilities.SnapToDirections(eulerAnglesY, directionCount);
+                transform.localEulerAngles = new Vector3(0, finalEulerAnglesY, 0);
+            }
+            else
+            {
+                eulerAnglesY = Mathf.MoveTowardsAngle(transform.localEulerAngles.y, yAngle, rotationDelta);
+                finalEulerAnglesY = eulerAnglesY;
+                transform.localEulerAngles = new Vector3(0, finalEulerAnglesY, 0);
+            }
         }
     }
 
@@ -253,9 +292,16 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     bool NewObstacleAvoidance(List<Unit> nearbyObjs, float deltaTime, out Vector2 obstacleDirection)
     {
+        if (solidCollider is not CapsuleCollider capsule)
+        {
+            obstacleDirection = Vector2.zero;
+            return false;
+        }
+
         var neighbors = nearbyObjs
                            .Where(u => u.gameObject != gameObject && !ShouldIgnore(u))
                            .ToList();
+
         for (int i = 0; i < neighbors.Count; i++)
         {
             Unit neighborUnit = neighbors[i];
@@ -267,38 +313,36 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             }
             float distance = direction.magnitude;
             cooldownTimer -= deltaTime;
-            if (CapsuleCastMatchesCollider(solidCollider, direction, distance, out RaycastHit hitInfo, -1, QueryTriggerInteraction.UseGlobal))
             {
-                if (cooldownTimer <= 0)
+                if (CapsuleCastMatchesCollider(capsule, direction, distance, out RaycastHit hitInfo, -1, QueryTriggerInteraction.UseGlobal))
                 {
-                    //Debug.Log(hitInfo.collider.name);
+                    if (cooldownTimer <= 0)
+                    {
+                        //Debug.Log(hitInfo.collider.name);
 
-                    // Base avoidance is normal
-                    Vector3 normal = hitInfo.normal;
+                        // Base avoidance is normal
+                        Vector3 normal = hitInfo.normal;
 
-                    // Get right vector from current forward (or desired move direction)
-                    Vector3 right = Vector3.Cross(Vector3.up, direction.normalized);
+                        // Get right vector from current forward (or desired move direction)
+                        Vector3 right = Vector3.Cross(Vector3.up, direction.normalized);
 
-                    // Bias factor (positive = right, negative = left)
-                    float biasAmount = 0.5f; // adjust between -1 and 1
-                    Vector3 biasedAvoidance = (normal + right * biasAmount).normalized;
+                        // Bias factor (positive = right, negative = left)
+                        float biasAmount = 0.5f; // adjust between -1 and 1
+                        Vector3 biasedAvoidance = (normal + right * biasAmount).normalized;
 
-                    _obstacleDir = biasedAvoidance;
-                    cooldownTimer = 0.5f;
+                        _obstacleDir = biasedAvoidance;
+                        cooldownTimer = 0.5f;
+                    }
+
+                    var targetRotation = Quaternion.LookRotation(transform.forward, _obstacleDir);
+                    float rotationDelta = rotationSpeed * deltaTime;
+                    var rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationDelta);
+
+                    obstacleDirection = rotation * Vector2.up;
+                    return true;
                 }
-
-                //DebugExtension.DebugArrow(transform.position, _obstacleDir * 0.5f, Color.cyan, 1f);
-                //var targetRotation = Quaternion.LookRotation(transform.forward, _obstacleDir);
-                //var rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationDelta);
-                //obstacleDirection = rotation * Vector2.up;
-
-                var targetRotation = Quaternion.LookRotation(transform.forward, _obstacleDir);
-                float rotationDelta = rotationSpeed * deltaTime;
-                var rotation = Quaternion.RotateTowards(transform.rotation, targetRotation, rotationDelta);
-
-                obstacleDirection = rotation * Vector2.up;
-                return true;
             }
+            
             break;
         }
         obstacleDirection = Vector2.zero;
@@ -469,6 +513,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     private void OnEnable()
     {
+        eulerAnglesY = transform.localEulerAngles.y;
         DeterministicUpdateManager.Instance.Register(this);
 
         if (rb)
@@ -481,14 +526,15 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     private void OnDisable()
     {
         DeterministicUpdateManager.Instance.Unregister(this);
-        movementState = State.Idle;
+        ChangeState(State.Idle);
+        //movementState = State.Idle;
         if (rb)
         {
             rb.linearVelocity = Vector3.zero;
             rb.linearDamping = 50;
             //rb.isKinematic = true;
         }
-        OnStopMoving?.Invoke();
+        //OnStopMoving?.Invoke();
     }
 
     // Helper function to get the nearest point on the NavMesh
@@ -504,7 +550,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     public bool IsOnShip()
     {
-        if (transform.parent && transform.parent.CompareTag("Ship Unit"))
+        if (transform.parent && transform.parent.CompareTag("Military Unit"))
         {
             return true;
         }
@@ -595,6 +641,12 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     {
         System.Action pathQueueAction = () =>
         {
+            if (pathfindingStatus == PathfindingStatus.CalledForCancellingOfPathfinding)
+            {
+                pathfindingStatus = PathfindingStatus.NoPathfindingCalled;
+                return;
+            }
+
             if (unit && unit.GetType() == typeof(MovableUnit) && !StatComponent.IsUnitAliveOrValid((MovableUnit)unit))
             {
                 return;
@@ -723,34 +775,8 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
                 return;
             }
         };
+        pathfindingStatus = PathfindingStatus.RequestedForPathfinding;
         PathfindingManager.Instance.RequestPathfinding(this, pathQueueAction, 0);
-    }
-
-    void OnDestroy()
-    {
-        if (OnStartMoving != null)
-        {
-            foreach (var d in OnStartMoving.GetInvocationList())
-            {
-                OnStartMoving -= (OnStartMovingDelegate)d;
-            }
-        }
-
-        if (OnStopMoving != null)
-        {
-            foreach (var d in OnStopMoving.GetInvocationList())
-            {
-                OnStopMoving -= (OnStopMovingDelegate)d;
-            }
-        }
-
-        if (OnMoving != null)
-        {
-            foreach (var d in OnMoving.GetInvocationList())
-            {
-                OnMoving -= (OnMovingDelegate)d;
-            }
-        }
     }
 
     public void Load(MapLoader.SaveLoadData data)

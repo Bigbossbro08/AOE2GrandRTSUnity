@@ -117,5 +117,12 @@ public static class Utilities
     public static Vector2 ToVector2XZ(Vector3 v) => new Vector2(v.x, v.z);
 
     // Converts to a Vector2 to Vector3(x, given y, z)
-    public static Vector3 ToVector3(Vector2 v2, float y) => new Vector3(v2.x, y, v2.y);
+    public static Vector3 ToVector3(Vector2 v2, float y) => new Vector3(v2.x, y, v2.y); 
+    
+    public static float SnapToDirections(float inputAngle, int directionCount)
+    {
+        float step = 360f / directionCount;
+        float snapped = Mathf.Round(inputAngle / step) * step;
+        return (snapped % 360 + 360) % 360; // Normalize to 0–360
+    }
 }

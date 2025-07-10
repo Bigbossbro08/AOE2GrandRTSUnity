@@ -15,6 +15,7 @@ public class DebugSpritePlayer : MonoBehaviour
     private float timer;
     private int currentAngleIndex;
     private bool isPlaying = false;
+    private int angleCount = 8;
 
     void Awake()
     {
@@ -30,6 +31,7 @@ public class DebugSpritePlayer : MonoBehaviour
     public void Load(string spriteFile)
     {
         spriteData = CustomSpriteLoader.Instance.LoadSprite(spriteFile);
+        angleCount = spriteData.sprites.Count;
         currentFrame = 0;
         timer = 0f;
         isPlaying = true;
@@ -81,7 +83,7 @@ public class DebugSpritePlayer : MonoBehaviour
 
     void UpdateAngleGroup()
     {
-        int newAngleIndex = CustomSpriteLoader.GetFixed8DirectionAngle(angle + spriteData.rotation_offset);
+        int newAngleIndex = CustomSpriteLoader.GetFixed8DirectionAngle(angle + spriteData.rotation_offset, angleCount);
         if (newAngleIndex != currentAngleIndex)
         {
             currentAngleIndex = newAngleIndex;

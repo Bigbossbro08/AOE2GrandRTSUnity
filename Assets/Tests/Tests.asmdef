@@ -5,7 +5,8 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "CoreGameScripts",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "DebugDrawingExtension"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

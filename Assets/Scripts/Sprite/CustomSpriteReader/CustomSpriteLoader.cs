@@ -38,6 +38,7 @@ public class CustomSpriteLoader : MonoBehaviour
         public int frames_per_angle;
         public Texture2D mainTexture;
         public Texture2D maskTexture;
+        // Key is angle index and count should return total angle count
         public Dictionary<int, List<Sprite>> sprites = new Dictionary<int, List<Sprite>>();
 
         public SpriteReturnData(
@@ -118,10 +119,11 @@ public class CustomSpriteLoader : MonoBehaviour
     }
 
     // Snaps the angle to the nearest 8 directions (0, 45, 90, ..., 315)
-    public static int GetFixed8DirectionAngle(float angle)
+    public static int GetFixed8DirectionAngle(float angle, int angleCount)
     {
+        float angleSize = 360 / angleCount;
         angle = NormalizeAngle(angle); // Ensure within 0-360
-        int index = (int)Mathf.Round(angle / 45.0f) % 8; // Find closest direction index
+        int index = (int)Mathf.Round(angle / angleSize) % angleCount; // Find closest direction index
         return index; // Convert back to angle
     }
 

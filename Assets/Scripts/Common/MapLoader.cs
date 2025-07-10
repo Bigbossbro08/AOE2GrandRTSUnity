@@ -176,7 +176,7 @@ public class MapLoader : MonoBehaviour
             {
                 case "MovableUnitData":
                     MovableUnit.MovableUnitData movableUnitData = unitData as MovableUnit.MovableUnitData;
-                    MovableUnit movableUnit = UnitManager.Instance.movableUnitPool.Get(); //Instantiate(UnitManager.Instance.movableUnitPrefab);
+                    MovableUnit movableUnit = UnitManager.Instance.GetMovableUnitFromPool(); //Instantiate(UnitManager.Instance.movableUnitPrefab);
                     movableUnit.Load(movableUnitData);
                     break;
                 case "ShipUnitData":

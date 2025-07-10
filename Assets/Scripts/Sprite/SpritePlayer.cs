@@ -70,7 +70,8 @@ public class SpritePlayer : MonoBehaviour
 
     void ValidateSprites(bool forceUpdate = false)
     {
-        int newAngle = CustomSpriteLoader.GetFixed8DirectionAngle(mainTransform.eulerAngles.y); //OpenageSpriteLoader.PredictAngleBasedOnRotation(mainTransform.eulerAngles.y,true);
+        int angleCount = 8;
+        int newAngle = CustomSpriteLoader.GetFixed8DirectionAngle(mainTransform.eulerAngles.y, angleCount); //OpenageSpriteLoader.PredictAngleBasedOnRotation(mainTransform.eulerAngles.y,true);
         if (currentAngleIndex != newAngle || forceUpdate)
         {
             //isMirrored = OpenageSpriteLoader.CanBeMirrored(mainTransform.eulerAngles.y);
