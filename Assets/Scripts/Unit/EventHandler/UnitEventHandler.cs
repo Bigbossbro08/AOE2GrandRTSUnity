@@ -233,12 +233,19 @@ public class UnitEventHandler : MonoBehaviour
                             UnitManager.UnitJsonData militaryUnit = UnitManager.Instance.LoadUnitJsonData(movableUnit.unitDataName);
                             movableUnit.walkSprite = militaryUnit.corpse;
                             movableUnit.standSprite = militaryUnit.corpse;
-                            DeadUnit deadUnit = UnitManager.Instance.deadUnitPool.Get();
-                            deadUnit.playerId = movableUnit.playerId;
-                            deadUnit.transform.position = movableUnit.transform.position;
-                            deadUnit.transform.rotation = movableUnit.transform.rotation;
-                            deadUnit.unitDataName = movableUnit.unitDataName;
-                            deadUnit.SetVisual(militaryUnit.corpse);
+                            System.Action<Unit> action = (unit) =>
+                            {
+                                DeadUnit deadUnit = (DeadUnit)unit;
+                                Debug.Assert(deadUnit != null);
+                                deadUnit.playerId = movableUnit.playerId;
+                                deadUnit.transform.position = movableUnit.transform.position;
+                                deadUnit.transform.rotation = movableUnit.transform.rotation;
+                                deadUnit.unitDataName = movableUnit.unitDataName;
+                                deadUnit.spriteName = militaryUnit.corpse;
+                            };
+                            DeadUnit deadUnit = UnitManager.Instance.GetDeadUnitFromPool(action);
+                            //DeadUnit deadUnit = UnitManager.Instance.deadUnitPool.Get();
+                            //deadUnit.SetVisual(militaryUnit.corpse);
                             movableUnit.statComponent.OnDeathCallback?.Invoke(movableUnit.id);
                             UnitManager.Instance.ReleaseMovableUnitFromPool(movableUnit);
                             //UnitManager.Instance.movableUnitPool.Release(movableUnit);

@@ -163,7 +163,12 @@ public class MoveUnitsCommand : InputCommand
             {
                 startPosition = unit.transform.position;
             }
-            movableUnit.shipData.SetDockedMode(false);
+
+            if (movableUnit.IsShip())
+            {
+                movableUnit.shipData.SetDockedMode(false);
+            }
+
             movableUnit.SetAIModule(IsAttackMove ? UnitAIModule.AIModule.AttackMoveAIModule : UnitAIModule.AIModule.BasicMovementAIModule,
                 position, newCrowdID, offset, startPosition);
             //movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID);
@@ -195,7 +200,7 @@ public class MoveUnitsCommand : InputCommand
         List<Unit> units = new List<Unit>();
         if (IsAttackMove)
         {
-            Debug.Log($"Doing Attack Move");
+            //Debug.Log($"Doing Attack Move");
         }
 
         int unitCount = unitIDs.Count;
@@ -213,20 +218,149 @@ public class MoveUnitsCommand : InputCommand
     }
 }
 
-public class MoveShipUnitCommand : InputCommand
+public class DockShipUnitCommand : InputCommand
 {
-    public const string commandName = "Move Ship Unit Command";
-    public ulong unitID;
+    public const string commandName = "Dock Ship Unit Command";
+    public List<ulong> unitIDs;
     public Vector3 position;
+
+    public void ArrangeUnits_New(List<Unit> units, Vector3 position, ulong crowdID)
+    {
+        if (units == null || units.Count == 0) return;
+
+        ulong newCrowdID = ++UnitManager.crowdIDCounter;
+
+        // 1. Build formation positions
+        const float unitWidth = 0.14f;
+        const float interUnitSpacing = 0.14f;
+        float spacing = unitWidth + interUnitSpacing;
+        int totalUnits = units.Count;
+        int columns = Mathf.CeilToInt(Mathf.Sqrt(totalUnits));
+        List<Vector3> formationOffsets = new List<Vector3>();
+
+        Vector3 center = Vector3.zero;
+        for (int i = 0; i < totalUnits; i++)
+        {
+            float row = Mathf.Floor(i / (float)columns);
+            float col = i % columns;
+
+            float unitsInRow = Mathf.Min(columns, totalUnits - row * columns);
+            float totalRowWidth = (unitsInRow - 1) * spacing;
+            float offsetX = -totalRowWidth / 2f;
+
+            float x = col * spacing + offsetX;
+            float z = row * spacing;
+
+            formationOffsets.Add(new Vector3(x, 0, -z)); // negative z for forward
+            center += units[i].transform.position;
+        }
+
+        center /= totalUnits;
+
+        // 2. Build cost matrix
+        float[,] costMatrix = new float[totalUnits, totalUnits];
+        for (int i = 0; i < totalUnits; i++)
+        {
+            Vector3 unitPos = units[i].transform.position;
+            for (int j = 0; j < totalUnits; j++)
+            {
+                Vector3 targetPos = position + formationOffsets[j];
+                costMatrix[i, j] = Vector3.SqrMagnitude(unitPos - targetPos); // Use squared for performance
+            }
+        }
+
+        // 3. Solve assignment
+        List<int> assignment = HungarianAlgorithm.Solve(costMatrix).ToList();
+        assignment.Reverse();
+
+        // 4. Issue move commands
+        Vector3 startPathfindingPostion = units[0].transform.position;
+        for (int i = 0; i < totalUnits; i++)
+        {
+            Unit unit = units[i];
+            MovableUnit movableUnit = (MovableUnit)unit;
+            if (StatComponent.IsUnitAliveOrValid(movableUnit))
+            {
+                int assignedIndex = assignment[i];
+                Vector3 offset = formationOffsets[assignedIndex];
+                MoveToCommand(unit, position, newCrowdID, offset, center);
+            }
+        }
+    }
+
+    public void MoveUnitsToTargetInFormation(Vector3 destination, List<Unit> units)
+    {
+        List<List<Unit>> clusters = MoveUnitsCommand.ClusterUnits(units, 5f); // 5 units apart same formation
+
+        foreach (var cluster in clusters)
+        {
+            ulong newCrowdID = ++UnitManager.crowdIDCounter;
+            if (cluster.Count == 1)
+            {
+                // Move alone
+                MoveToCommand(cluster[0], destination, newCrowdID);
+            }
+            else
+            {
+                // Formation move
+                ArrangeUnits_New(cluster, destination, newCrowdID);
+                //ArrangeClusterFormation(destination, cluster);
+            }
+        }
+    }
+
+    void MoveToCommand(Unit unit, Vector3 position, ulong newCrowdID, Vector3 offset = default, Vector3? startPosition = null)
+    {
+        MovableUnit movableUnit = (MovableUnit)unit;
+        if (StatComponent.IsUnitAliveOrValid(movableUnit))
+        {
+            if (!movableUnit.IsShip()) return;
+            movableUnit.ResetUnit(true);
+            if (startPosition == null)
+            {
+                startPosition = unit.transform.position;
+            }
+            Vector3 diff = startPosition.Value - position;
+            float sqrMagnitude = diff.sqrMagnitude;
+            const float distanceForFastRearrange = 5;
+            const float distanceForFastRearrangeSqr = distanceForFastRearrange * distanceForFastRearrange;
+            if (sqrMagnitude < distanceForFastRearrangeSqr)
+            {
+                startPosition = unit.transform.position;
+            }
+
+            if (movableUnit.shipData.isDocked)
+            {
+                //IEnumerator<IDeterministicYieldInstruction> DelayedDock()
+                //{
+                //    yield return new DeterministicWaitForSeconds(0);
+                //    movableUnit.shipData.checkUndockableAtStop = true;
+                //}
+                //DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(DelayedDock());
+            }
+            else
+            {
+                movableUnit.shipData.checkUndockableAtStop = true;
+            }
+
+            movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule,
+                position, newCrowdID, offset, startPosition);
+        }
+    }
 
     public void Execute()
     {
-        Unit unit = UnitManager.Instance.GetUnit(unitID);
-        if (unit)
+        List<Unit> units = new List<Unit>();
+        int unitCount = unitIDs.Count;
+        for (int i = 0; i < unitCount; i++)
         {
-            ShipUnit shipUnit = (ShipUnit)unit;
-            shipUnit.StartPathfind(position);
+            Unit unit = UnitManager.Instance.GetUnit(unitIDs[i]);
+            if (unit && unit.GetType() == typeof(MovableUnit))
+            {
+                units.Add(unit);
+            }
         }
+        MoveUnitsToTargetInFormation(position, units);
     }
 }
 
@@ -275,9 +409,9 @@ public class DeleteUnitsCommand : InputCommand
     }
 }
 
-public class MoveShipToDockCommand : InputCommand
+public class StopUnits : InputCommand
 {
-    public const string commandName = "Move Ship to Dock Command";
+    public const string commandName = "Stop Units";
     public ulong unitID;
     public Vector3 position;
     public Vector3 targetToDock;
@@ -287,12 +421,53 @@ public class MoveShipToDockCommand : InputCommand
         Unit unit = UnitManager.Instance.GetUnit(unitID);
         if (unit)
         {
-            ShipUnit shipUnit = (ShipUnit)unit;
-            DebugExtension.DebugWireSphere(position, Color.red, 0.1f, 5.0f);
-            DebugExtension.DebugWireSphere(targetToDock, Color.cyan, 0.1f, 5.0f);
-            shipUnit.DockAt(position, targetToDock);
+            if (unit.GetType() == typeof(MovableUnit))
+            {
+                MovableUnit movableUnit = unit as MovableUnit;
+                if (StatComponent.IsUnitAliveOrValid(movableUnit))
+                {
+                    movableUnit.movementComponent.Stop();
+                }
+            }
             // shipUnit.StartPathfind(position);
         }
+    }
+}
+
+public class DockToShipCommand : InputCommand
+{
+    public const string commandName = "Attack Unit Command";
+    public List<ulong> unitIDs = new List<ulong>();
+    public ulong targetID = 0;
+
+    static bool IsValidShip(ulong id, out MovableUnit targetShip)
+    {
+        targetShip = null;
+        Unit targetUnit = UnitManager.Instance.GetUnit(id);
+        if (targetUnit.GetType() != typeof(MovableUnit)) { return false; }
+        targetShip = targetUnit as MovableUnit;
+        if (!StatComponent.IsUnitAliveOrValid(targetShip)) { return false; }
+        if (!targetShip.IsShip()) return false;
+        return true;
+    }
+
+    public void Execute()
+    {
+        if (unitIDs.Contains(targetID)) return;
+
+        if (IsValidShip(targetID, out MovableUnit targetShip))
+        {
+            for (int i = 0; i < unitIDs.Count; i++)
+            {
+                ulong id = unitIDs[i];
+                if (IsValidShip(id, out MovableUnit movableUnit))
+                {
+
+                }
+
+            }
+        }
+
     }
 }
 
@@ -424,15 +599,15 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
                     moveUnitCommand.Execute();
                 }
                 break;
-            case MoveShipUnitCommand.commandName:
+            case DockShipUnitCommand.commandName:
                 {
-                    MoveShipUnitCommand moveShipUnitCommand = command as MoveShipUnitCommand;
+                    DockShipUnitCommand moveShipUnitCommand = command as DockShipUnitCommand;
                     moveShipUnitCommand.Execute();
                 }
                 break;
-            case MoveShipToDockCommand.commandName:
+            case StopUnits.commandName:
                 {
-                    MoveShipToDockCommand moveShipToDockCommand = command as MoveShipToDockCommand;
+                    StopUnits moveShipToDockCommand = command as StopUnits;
                     moveShipToDockCommand.Execute();
                 }
                 break;

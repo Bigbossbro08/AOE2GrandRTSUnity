@@ -497,7 +497,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1423741141054936895
 Transform:
   m_ObjectHideFlags: 0
@@ -564,6 +564,7 @@ MonoBehaviour:
   solidCollider: {fileID: 2941633059377370899}
   unit: {fileID: 2808056200127217721}
   movementState: 0
+  directionCount: 8
   flags: 17
   crowdID: 0
 --- !u!54 &3986329756883083697
@@ -750,7 +751,7 @@ GameObject:
   - component: {fileID: 6883434306485274279}
   - component: {fileID: 4559320072225414181}
   - component: {fileID: 7159101606759444937}
-  m_Layer: 6
+  m_Layer: 2
   m_Name: CheckCollider
   m_TagString: Untagged
   m_Icon: {fileID: 0}

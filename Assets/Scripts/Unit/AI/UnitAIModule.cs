@@ -8,7 +8,8 @@ public class UnitAIModule : MonoBehaviour, IDeterministicUpdate, MapLoader.IMapS
         BasicAttackAIModule,
         BasicMovementAIModule,
         TargetFollowingMovementAIModule,
-        AttackMoveAIModule
+        AttackMoveAIModule,
+        BasicShipAIModule
     }
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)

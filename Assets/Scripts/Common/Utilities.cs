@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public static class Utilities
 {
@@ -124,5 +125,32 @@ public static class Utilities
         float step = 360f / directionCount;
         float snapped = Mathf.Round(inputAngle / step) * step;
         return (snapped % 360 + 360) % 360; // Normalize to 0–360
+    }
+
+    public static void FitNavMeshObstacleToMesh(MeshFilter meshFilter, NavMeshObstacle obstacle)
+    {
+        if (meshFilter == null || obstacle == null)
+            return;
+
+        // Get local bounds of the mesh
+        Bounds meshBounds = meshFilter.sharedMesh.bounds;
+
+        // Calculate world scale
+        Vector3 worldScale = meshFilter.transform.lossyScale;
+
+        // Calculate scaled size from mesh bounds
+        Vector3 scaledSize = Vector3.Scale(meshBounds.size, worldScale);
+
+        // Set NavMeshObstacle size
+        obstacle.size = scaledSize;
+
+        // Calculate local center in world space
+        Vector3 worldCenter = meshFilter.transform.TransformPoint(meshBounds.center);
+
+        // Convert world center to local space of the obstacle
+        Vector3 localCenter = obstacle.transform.InverseTransformPoint(worldCenter);
+
+        // Set NavMeshObstacle center
+        obstacle.center = localCenter;
     }
 }

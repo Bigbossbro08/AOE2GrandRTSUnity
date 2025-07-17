@@ -37,6 +37,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     MovableUnit self;
     CombatComponent combatComponent = null; // Cache
+    List<MovableUnit> queuedMovableTargets = new List<MovableUnit>();
     MovableUnit target;
 
     float lookupTimer = 0;
@@ -60,10 +61,11 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         return StatComponent.IsUnitAliveOrValid(self);
     }
 
-    public static bool FindForEnemyUnit(MovableUnit self, float lineOfSight, out MovableUnit enemyUnit)
+    public static bool FindForEnemyUnit(MovableUnit self, float lineOfSight, out MovableUnit enemyUnit, List<Unit> units = null)
     {
         // Do lookup operation here
-        List<Unit> units = UnitManager.Instance.spatialHashGrid.QueryInRadius(self.transform.position, lineOfSight);
+        if (units == null)
+            units = UnitManager.Instance.spatialHashGrid.QueryInRadius(self.transform.position, lineOfSight);
         MinHeap<HeapUnitNode> unitHeap = new MinHeap<HeapUnitNode>();
 
         for (int i = 0; i < units.Count; i++)
@@ -92,19 +94,54 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         return false;
     }
 
+    void ClearTarget(bool all = false)
+    {
+        if (all)
+        {
+            if (queuedMovableTargets.Count != 0)
+                queuedMovableTargets.Clear();
+        }
+
+        target = null;
+    }
+
     void ProcessLookForTarget()
     {
+        if (self.IsShip() && !self.shipData.IsDrivable())
+        {
+            ClearTarget(true);
+            return;
+        }
+
         if (self.movementComponent.movementState == MovementComponent.State.Idle)
         {
             const float lineOfSight = 5f;
-            if (FindForEnemyUnit(self, lineOfSight, out MovableUnit targetUnit))
+            if (queuedMovableTargets.Count > 0)
             {
-                this.target = targetUnit;
-                SetDesiredState(State.MoveTowardsTarget);
-            } 
-            else
+                List<Unit> chainTargets = new List<Unit>(queuedMovableTargets.Count + 1);
+                foreach (var target in queuedMovableTargets)
+                {
+                    chainTargets.Add(target);
+                }
+
+                if (FindForEnemyUnit(self, lineOfSight, out MovableUnit targetUnit, chainTargets))
+                {
+                    SetTarget(targetUnit);
+                    SetDesiredState(State.MoveTowardsTarget);
+                }
+                return;
+            }
+
             {
-                self.ResetToDefaultModule();
+                if (FindForEnemyUnit(self, lineOfSight, out MovableUnit targetUnit))
+                {
+                    SetTarget(targetUnit);
+                    SetDesiredState(State.MoveTowardsTarget);
+                }
+                else
+                {
+                    self.ResetToDefaultModule();
+                }
             }
         }
     }
@@ -124,18 +161,53 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         return targetPosition;
     }
 
-    void SetTarget(MovableUnit target, bool updateTargetPosition = true)
+    void SetTarget(MovableUnit target)
     {
-        if (target)
+        if (!StatComponent.IsUnitAliveOrValid(target))
         {
-            this.target = target;
-            self.movementComponent.SetTargetToIgnore(target.id);
-            if (updateTargetPosition)
+            return;
+        }
+
+        void GetTargetsOfShip(MovableUnit ship)
+        {
+            queuedMovableTargets.Clear();
+            ship.shipData.unitsOnShip.ForEach(unit =>
             {
-                targetPosition = target.transform.position;
+                if (StatComponent.IsUnitAliveOrValid(unit))
+                {
+                    queuedMovableTargets.Add(unit);
+                }
+            });
+        }
+
+        if (target.IsShip())
+        {
+            GetTargetsOfShip(target);
+        }
+
+        if (target.movementComponent.IsOnShip())
+        {
+            if (target.transform.parent.TryGetComponent(out MovableUnit shipUnit))
+            {
+                GetTargetsOfShip(shipUnit);
             }
         }
+
+        this.target = target;
     }
+
+    //void SetTarget(MovableUnit target, bool updateTargetPosition = true)
+    //{
+    //    if (target)
+    //    {
+    //        this.target = target;
+    //        self.movementComponent.SetTargetToIgnore(target.id);
+    //        if (updateTargetPosition)
+    //        {
+    //            targetPosition = target.transform.position;
+    //        }
+    //    }
+    //}
 
     bool IsTargetWithinRange(bool useThreshold = false)
     {
@@ -165,7 +237,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         {
             case State.LookingForTarget:
                 {
-                    target = null;
+                    ClearTarget(false);
                     self.ResetUnit();
                     //ulong newCrowdID = ++UnitManager.crowdIDCounter;
                     //self.movementComponent.crowdID = newCrowdID;
@@ -207,6 +279,10 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     void RotateTowardsTarget()
     {
+        if (self.IsShip())
+        {
+            return;
+        }
         Vector3 diff = target.transform.position - self.transform.position;
         diff = diff.normalized;
         if (diff != Vector3.zero)
@@ -218,14 +294,38 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     void PerformAttackAction()
     {
+        if (self.IsShip()) {
+            if (target.IsShip())
+            {
+            }
+            return; 
+        }
         self.movementComponent.Stop();
         self.actionComponent.StartAction();
         combatComponent.StartDelay();
     }
 
+    bool CheckTargetIsValid()
+    {
+        if (self.IsShip() && !self.shipData.IsDrivable())
+        {
+            ClearTarget(true);
+            self.movementComponent.Stop();
+        }
+        if (StatComponent.IsUnitAliveOrValid(target))
+        {
+            return true;
+        }
+        if (queuedMovableTargets.Count == 0)
+        {
+            isTargeted = false;
+        }
+        return false;
+    }
+
     void State_MoveTowardsTarget(float deltaTime)
     {
-        if (!StatComponent.IsUnitAliveOrValid(target))
+        if (!CheckTargetIsValid())
         {
             SetDesiredState(State.LookingForTarget);
             return;
@@ -268,7 +368,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         {
             if (FindForEnemyUnit(self, thresholdForAttackState, out MovableUnit targetUnit))
             {
-                this.target = targetUnit;
+                SetTarget(targetUnit);
             }
         }
     }
@@ -290,10 +390,9 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     void State_AttackTarget()
     {
-        if (!StatComponent.IsUnitAliveOrValid(target))
+        if (!CheckTargetIsValid())
         {
             SetDesiredState(State.LookingForTarget);
-            isTargeted = false;
             return;
         }
 
@@ -395,6 +494,10 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     {
         if (StatComponent.IsUnitAliveOrValid(self))
         {
+            if (self.IsShip() && !self.shipData.IsDrivable())
+            {
+                return;
+            }
             this.self = self;
 
             if (self.unitTypeComponent.GetType() == typeof(CombatComponent))

@@ -191,36 +191,8 @@ public class SelectionController : MonoBehaviour
                         position = navHit.position;
                     }
                 }
-                if (ids.Count > 0)
-                {
-                    MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
-                    moveUnitsCommand.action = MoveUnitsCommand.commandName;
-                    moveUnitsCommand.unitIDs = new List<ulong>();
-                    moveUnitsCommand.unitIDs.AddRange(ids);
-                    moveUnitsCommand.position = hit.point;
-                    moveUnitsCommand.IsAttackMove = commandPanelUI.AttackMove;
-                    InputManager.Instance.SendInputCommand(moveUnitsCommand);
-                    commandPanelUI.AttackMove = false;
-                }
-                //else if (ids.Count == 1)
-                //{
-                //    if (IsTargetingUnit(hit, out MovableUnit targetMovableUnit))
-                //    {
-                //        AttackUnitCommand attackUnitCommand = new AttackUnitCommand();
-                //        attackUnitCommand.action = AttackUnitCommand.commandName;
-                //        attackUnitCommand.unitID = ids[0];
-                //        attackUnitCommand.targetID = targetMovableUnit.id;
-                //        InputManager.Instance.SendInputCommand(attackUnitCommand);
-                //    }
-                //    else
-                //    {
-                //        MoveUnitCommand moveUnitCommand = new MoveUnitCommand();
-                //        moveUnitCommand.action = MoveUnitCommand.commandName;
-                //        moveUnitCommand.unitID = ids[0];
-                //        moveUnitCommand.position = hit.point;
-                //        InputManager.Instance.SendInputCommand(moveUnitCommand);
-                //    }
-                //}
+                //commandPanelUI.FigureoutPanelFromSelection(selectionPanel.GetSelectedUnits());
+                commandPanelUI.HandleOrder(hit);
                 DebugExtension.DebugWireSphere(hit.point, Color.cyan, 0.1f, 5.0f);
             }
         }
@@ -281,27 +253,73 @@ public class SelectionController : MonoBehaviour
 
     void SelectObjects()
     {
+        List<Unit> selectedUnits = new List<Unit>();
+        List<Unit> filteredUnits = new List<Unit>();
+
         //Physics.SyncTransforms();
         GetSelectionBoxTransform(out Vector3 center, out Vector3 size);
-        Quaternion rotation = Quaternion.Euler(30, -45, 0);
-        const int selectLayer = 1 << 3; // Selectables
-        Collider[] hits = Physics.OverlapBox(center, size / 2, rotation, selectLayer);
-        List<Unit> selectedUnits = new List<Unit>();
-        //selectedUnits.Clear();
-        const string militaryUnitTag = "Military Unit";
-        const string shipUnitTag = "Ship Unit";
-        foreach (Collider hit in hits)
+        Vector2 xySize = new Vector2(Mathf.Abs(startScreenPos.x - endScreenPos.x), Mathf.Abs(startScreenPos.y - endScreenPos.y));
+        if (xySize.magnitude < 1)
         {
-            GameObject obj = FindParentByTag(hit.transform, militaryUnitTag);
-            if (obj != null && obj.TryGetComponent(out MovableUnit unit))
+            //int layer = ~(1 << 2 | 1 << 3 | 1 << 6 | 1 << 30);
+            int layer = 6;
+            RaycastHit hit;
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out hit, 100000, layer))
             {
-                //var icon = unit.GetSpriteIcon();
-                selectedUnits.Add(unit);
-                //Debug.Log("Selected unit:" + obj.gameObject.name);
+                Unit unit = hit.transform.GetComponent<Unit>();
+                if (unit && unit.IsSelectable())
+                {
+                    selectedUnits.Add(unit);
+                }
             }
         }
-        selectionPanel.SetupUnitSelection(selectedUnits);
-        commandPanelUI.FigureoutPanelFromSelection(selectedUnits);
+        else
+        {
+            Quaternion rotation = Quaternion.Euler(30, -45, 0);
+            const int selectLayer = 1 << 3; // Selectables
+            Collider[] hits = Physics.OverlapBox(center, size / 2, rotation, selectLayer);
+            //selectedUnits.Clear();
+            const string militaryUnitTag = "Military Unit";
+            const string shipUnitTag = "Ship Unit";
+            foreach (Collider hit in hits)
+            {
+                GameObject obj = FindParentByTag(hit.transform, militaryUnitTag);
+                if (obj != null && obj.TryGetComponent(out MovableUnit unit))
+                {
+                    if (!unit.IsSelectable()) continue;
+                    //var icon = unit.GetSpriteIcon();
+                    selectedUnits.Add(unit);
+                    //Debug.Log("Selected unit:" + obj.gameObject.name);
+                }
+            }
+        }
+
+        MovableUnit selectedShip = null;
+
+        for (int i = 0; i < selectedUnits.Count && i < 60; i++)
+        {
+            var unit = selectedUnits[i];
+            if (unit.GetType() == typeof(MovableUnit))
+            {
+                MovableUnit movableUnit = (MovableUnit)unit;
+                if (movableUnit.IsShip())
+                {
+                    selectedShip = movableUnit;
+                    continue;
+                }
+                if (movableUnit.movementComponent.IsOnShip()) continue;
+                filteredUnits.Add(unit);
+            }
+        }
+
+        if (filteredUnits.Count == 0 && selectedShip != null)
+        {
+            filteredUnits.Add(selectedShip);
+        }
+
+        selectionPanel.SetupUnitSelection(filteredUnits);
+        commandPanelUI.FigureoutPanelFromSelection(filteredUnits);
         //Debug.Log("Selected Units: " + hits.Length);
     }
 

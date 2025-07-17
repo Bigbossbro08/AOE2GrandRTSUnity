@@ -21,10 +21,17 @@ public class CameraMovement : MonoBehaviour
                               pos.y >= 0 && pos.y <= Screen.height;
 
 #if UNITY_EDITOR
-        bool isGameViewFocused = EditorWindow.mouseOverWindow != null &&
-                                 EditorWindow.mouseOverWindow.titleContent != null &&
-                                 EditorWindow.mouseOverWindow.titleContent.text == "Game";
-        return !isInsideScreen || !isGameViewFocused;
+        try
+        {
+            bool isGameViewFocused = EditorWindow.mouseOverWindow != null &&
+                                     EditorWindow.mouseOverWindow.titleContent != null &&
+                                     EditorWindow.mouseOverWindow.titleContent.text == "Game";
+            return !isInsideScreen || !isGameViewFocused;
+        }
+        catch (System.Exception e)
+        {
+            return false;
+        }
 #else
     return !isInsideScreen;
 #endif

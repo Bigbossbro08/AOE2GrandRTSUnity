@@ -8,6 +8,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.Pool;
 using static CustomSpriteLoader;
+using static PathfinderTest;
 using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
 
 public class PlayerData
@@ -25,6 +26,7 @@ public class PlayerData
 [RequireComponent(typeof(SpatialHashGrid))]
 public class UnitManager : MonoBehaviour
 {
+    [System.Serializable]
     public class UnitJsonData
     {
         public enum ArmorClass
@@ -34,6 +36,13 @@ public class UnitManager : MonoBehaviour
             Infantry = 1,
             Cavalry = 8,
             // ... include all relevant classes (IDs from AoE2)
+        }
+
+        [System.Serializable]
+        public class Prop
+        {
+            [JsonProperty("graphics")]
+            public string graphics = null;
         }
 
         public class ProjectileUnit
@@ -100,6 +109,9 @@ public class UnitManager : MonoBehaviour
 
             [JsonProperty("navlinks")]
             public List<NavLinkData> navlinks = new();
+
+            [JsonProperty("docked")]
+            public string dockedProp = null;
         }
 
         [System.Serializable]
@@ -134,6 +146,12 @@ public class UnitManager : MonoBehaviour
 
         [JsonProperty("movement_speed")]
         public float movement_speed = 0.96f;
+
+        [JsonProperty("rotation_speed")]
+        public float? rotation_speed = 360.0f;
+
+        [JsonProperty("use_steering")]
+        public bool? use_steering = false;
 
         [JsonProperty("attack_delay")]
         public float attack_delay = 1.0f;
@@ -190,19 +208,24 @@ public class UnitManager : MonoBehaviour
 
     private ObjectPool<MovableUnit> movableUnitPool;
     public ObjectPool<ShipUnit> shipUnitPool;
-    public ObjectPool<DeadUnit> deadUnitPool;
+    private ObjectPool<DeadUnit> deadUnitPool;
     public ObjectPool<ProjectileUnit> projectileUnitPool;
+    private ObjectPool<PropUnit> propUnitPool;
 
     Dictionary<ulong, PlayerData> players = new Dictionary<ulong, PlayerData>();
     Dictionary<ulong, Unit> units = new Dictionary<ulong, Unit>(5000);
     
     Dictionary<string, UnitJsonData> unitData = new Dictionary<string, UnitJsonData>();
     Dictionary<string, UnitJsonData.ProjectileUnit> projectileData = new Dictionary<string, UnitJsonData.ProjectileUnit>();
+    Dictionary<string, UnitJsonData.Prop> propData = new Dictionary<string, UnitJsonData.Prop>();
 
     public MovableUnit movableUnitPrefab;
     public ShipUnit shipUnitPrefab;
     public DeadUnit deadUnitPrefab;
     public ProjectileUnit projectileUnitPrefab;
+    public PropUnit propUnitPrefab;
+
+    System.Action<Unit> PreSpawnAction = null;
 
     private string dataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\data";
 
@@ -259,29 +282,87 @@ public class UnitManager : MonoBehaviour
             playerColor = Color.grey;
             players.Add(8, new PlayerData(8, playerColor));
         }
-    }
-
-    private void Start()
-    {
-        movableUnitPool = new ObjectPool<MovableUnit>(SpawnMovableUnit, GetMovableUnitfromPool, ReleaseMovableUnitfromPool, DestroyMovableUnitfromPool, false, 200, 5000);
-        shipUnitPool = new ObjectPool<ShipUnit>(SpawnShipUnit, GetShipUnitFromPool, ReleaseShipUnitFromPool, DestroyShipUnitFromPool);
-        deadUnitPool = new ObjectPool<DeadUnit>(SpawnDeadUnit, GetDeadUnitFromPool, ReleaseDeadUnitFromPool, DestroyDeadUnitFromPool);
+        movableUnitPool = new ObjectPool<MovableUnit>(_SpawnMovableUnit, _GetMovableUnitfromPool, _ReleaseMovableUnitfromPool, _DestroyMovableUnitfromPool, false, 200, 5000);
+        //shipUnitPool = new ObjectPool<ShipUnit>(SpawnShipUnit, GetShipUnitFromPool, ReleaseShipUnitFromPool, DestroyShipUnitFromPool);
+        deadUnitPool = new ObjectPool<DeadUnit>(_SpawnDeadUnit, _GetDeadUnitFromPool, _ReleaseDeadUnitFromPool, _DestroyDeadUnitFromPool, false, 200, 5000);
         projectileUnitPool = new ObjectPool<ProjectileUnit>(SpawnProjectileUnit, GetProjectileUnitFromPool, ReleaseProjectileUnitFromPool, DestroyProjectileUnitFromPool);
+        propUnitPool = new ObjectPool<PropUnit>(_SpawnPropUnit, _GetPropUnitFromPool, _ReleasePropUnitFromPool, _DestroyPropFromPool, false, 200, 5000);
+
     }
 
-    private DeadUnit SpawnDeadUnit()
+    public PropUnit GetPropUnitFromPool(System.Action<Unit> PreSpawnAction = null)
+    {
+        this.PreSpawnAction = PreSpawnAction;
+        return propUnitPool.Get();
+    }
+
+    public void ReleasePropUnitFromPool(PropUnit unit)
+    {
+        propUnitPool.Release(unit);
+    }
+
+    private void _GetPropUnitFromPool(PropUnit unit)
+    {
+        PreSpawnAction?.Invoke(unit);
+        unit.gameObject.SetActive(true);
+        PreSpawnAction = null;
+    }
+
+    private PropUnit _SpawnPropUnit()
+    {
+        PropUnit propUnit = Instantiate(propUnitPrefab);
+        return propUnit;
+    }
+
+    private void _ReleasePropUnitFromPool(PropUnit unit)
+    {
+        unit.transform.SetParent(null, true);
+        if (units.ContainsKey(unit.id))
+        {
+            units.Remove(unit.id);
+        }
+        unit.gameObject.SetActive(false);
+
+        //UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnUnitRemove, unit.id);
+    }
+
+    private void _DestroyPropFromPool(PropUnit unit)
+    {
+        if (units.ContainsKey(unit.id))
+        {
+            units.Remove(unit.id);
+        }
+
+        Destroy(unit);
+    }
+
+    private DeadUnit _SpawnDeadUnit()
     {
         DeadUnit deadUnit = Instantiate(deadUnitPrefab);
         return deadUnit;
     }
 
-    private void GetDeadUnitFromPool(DeadUnit unit)
+    public DeadUnit GetDeadUnitFromPool(System.Action<Unit> PreSpawnAction = null)
     {
-        unit.gameObject.SetActive(true);
+        this.PreSpawnAction = PreSpawnAction;
+        return deadUnitPool.Get();
     }
 
-    private void ReleaseDeadUnitFromPool(DeadUnit unit)
+    public void ReleaseDeadUnitFromPool(DeadUnit deadUnit)
     {
+        deadUnitPool.Release(deadUnit);
+    }
+
+    private void _GetDeadUnitFromPool(DeadUnit unit)
+    {
+        PreSpawnAction?.Invoke(unit);
+        unit.gameObject.SetActive(true);
+        PreSpawnAction = null;
+    }
+
+    private void _ReleaseDeadUnitFromPool(DeadUnit unit)
+    {
+        unit.transform.SetParent(null, true);
         if (units.ContainsKey(unit.id))
         {
             units.Remove(unit.id);
@@ -289,7 +370,7 @@ public class UnitManager : MonoBehaviour
         unit.gameObject.SetActive(false);
     }
 
-    private void DestroyDeadUnitFromPool(DeadUnit unit)
+    private void _DestroyDeadUnitFromPool(DeadUnit unit)
     {
         if (units.ContainsKey(unit.id))
         {
@@ -330,9 +411,7 @@ public class UnitManager : MonoBehaviour
     #endregion
 
     #region MovableUnit
-
-    System.Action<MovableUnit> PreSpawnAction = null;
-    private void GetMovableUnitfromPool(MovableUnit unit)
+    private void _GetMovableUnitfromPool(MovableUnit unit)
     {
         PreSpawnAction?.Invoke(unit);
         unit.gameObject.SetActive(true);
@@ -340,41 +419,62 @@ public class UnitManager : MonoBehaviour
         UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnUnitSpawn, unit.id);
     }
 
-    public MovableUnit GetMovableUnitFromPool(System.Action<MovableUnit> PreSpawnAction = null)
+    public MovableUnit GetMovableUnitFromPool(System.Action<Unit> PreSpawnAction = null)
     {
         this.PreSpawnAction = PreSpawnAction;
-        return UnitManager.Instance.movableUnitPool.Get();
+        return movableUnitPool.Get();
     }
 
     public void ReleaseMovableUnitFromPool(MovableUnit unit)
     {
-        UnitManager.Instance.movableUnitPool.Release(unit);
+        movableUnitPool.Release(unit);
     }
 
-    private MovableUnit SpawnMovableUnit()
+    private MovableUnit _SpawnMovableUnit()
     {
         MovableUnit movableUnit = Instantiate(movableUnitPrefab);
         return movableUnit;
     }
 
-    private void ReleaseMovableUnitfromPool(MovableUnit unit)
+    private void _ReleaseMovableUnitfromPool(MovableUnit unit)
     {
+        unit.OnRelease?.Invoke(unit.id);
+        unit.transform.SetParent(null, true);
+
+        if (unit.IsShip())
+        {
+            if (unit.shipData.unitsOnShip != null && unit.shipData.unitsOnShip.Count > 0)
+            {
+                foreach (var u in unit.shipData.unitsOnShip)
+                {
+                    NativeLogger.Log($"Unit id: {u.id} is alive when ship {unit.id} died");
+                    u.transform.SetParent(null, true);
+                    StatComponent.KillUnit(u);
+                }
+                unit.shipData.unitsOnShip.Clear();
+            }
+        }
+
         if (units.ContainsKey(unit.id))
         {
             units.Remove(unit.id);
         }
+
         unit.gameObject.SetActive(false);
+        //unit.gameObject.transform.position = UnityEngine.Vector3.zero;
 
         UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnUnitRemove, unit.id);
         //movableUnitPool.Release(unit);
     }
 
-    private void DestroyMovableUnitfromPool(MovableUnit unit)
+    private void _DestroyMovableUnitfromPool(MovableUnit unit)
     {
         if (units.ContainsKey(unit.id))
         {
             units.Remove(unit.id);
         }
+
+        UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnUnitRemove, unit.id);
         Destroy(unit);
     }
     #endregion
@@ -489,5 +589,18 @@ public class UnitManager : MonoBehaviour
         UnitJsonData.ProjectileUnit projectileUnit = JsonConvert.DeserializeObject<UnitJsonData.ProjectileUnit>(File.ReadAllText(jsonPath));
         projectileData.Add(name, projectileUnit);
         return projectileUnit;
+    }
+
+    public UnitJsonData.Prop LoadPropJsonData(string name)
+    {
+        if (propData.ContainsKey(name))
+        {
+            return propData[name];
+        }
+
+        string jsonPath = Path.Combine(dataPath, name + ".json");
+        UnitJsonData.Prop propUnit = JsonConvert.DeserializeObject<UnitJsonData.Prop>(File.ReadAllText(jsonPath));
+        propData.Add(name, propUnit);
+        return propUnit;
     }
 }

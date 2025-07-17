@@ -10,6 +10,7 @@ public class DeadUnit : Unit, MapLoader.IMapSaveLoad, IDeterministicUpdate
 
     private void OnEnable()
     {
+        SetVisual(spriteName);
         Initialize();
         DeterministicUpdateManager.Instance.Register(this);
     }
@@ -19,7 +20,7 @@ public class DeadUnit : Unit, MapLoader.IMapSaveLoad, IDeterministicUpdate
         DeterministicUpdateManager.Instance.Unregister(this);
     }
 
-    public void SetVisual(string sprite)
+    private void SetVisual(string sprite)
     {
         visualUpdater.SetSpriteName(sprite, true);
         visualUpdater.PlayOrResume(false);
@@ -31,7 +32,7 @@ public class DeadUnit : Unit, MapLoader.IMapSaveLoad, IDeterministicUpdate
     {
         if (currentTime > timeToDestroy)
         {
-            UnitManager.Instance.deadUnitPool.Release(this);
+            UnitManager.Instance.ReleaseDeadUnitFromPool(this);;
         }
         currentTime += deltaTime;
     }

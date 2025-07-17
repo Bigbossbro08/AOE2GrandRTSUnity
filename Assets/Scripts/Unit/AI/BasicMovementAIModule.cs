@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.AI;
 using static UnityEngine.GraphicsBuffer;
 
 public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoader.IMapSaveLoad
@@ -49,6 +50,11 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
             case State.ReachedDestination:
                 {
                     self.movementComponent.Stop();
+                    //if (self.shipData != null && self.shipData.isShipMode && self.shipData.isDocked)
+                    //{
+                    //    self.movementComponent.rb.isKinematic = true;
+                    //}
+
                     self.ResetToDefaultModule();
                     enabled = false;
                 }
@@ -169,6 +175,10 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
     {
         if (StatComponent.IsUnitAliveOrValid(self))
         {
+            if (self.IsShip() && !self.shipData.IsDrivable())
+            {
+                return;
+            }
             this.self = self;
             this.position = position;
             this.offset = offset;

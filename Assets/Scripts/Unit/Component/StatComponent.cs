@@ -17,6 +17,11 @@ public class StatComponent : MonoBehaviour
         //health = 45f;
     }
 
+    private void OnDisable()
+    {
+        health = 0;
+    }
+
     public float GetMaxHealth() { return maxHealth; }
 
     public void SetHealth(float health, MovableUnit unit = null, float? maxHealth = null)
@@ -46,7 +51,7 @@ public class StatComponent : MonoBehaviour
         float damageGiven = CombatComponent.CalculateDamageData(damageData, targetUnit.statComponent.damageData);
 
         targetHealth -= damageGiven;
-        targetUnit.statComponent.SetHealth(targetHealth, targetUnit);
+        targetUnit.statComponent.SetHealth(targetHealth, targetUnit, targetUnit.statComponent.GetMaxHealth());
         return targetUnit.statComponent.GetHealth() == 0;
     }
 

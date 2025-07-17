@@ -1,14 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.UIElements;
 
 public class CommandPanelUI : MonoBehaviour
 {
     private List<CommandButton> commandButtons = new();
 
+    //[SerializeField]
+    //private Sprite attackMoveSprite = null;
+
+    public System.Action<RaycastHit> HandleOrder = (hit) => { };
+
     [SerializeField]
-    private Sprite attackMoveSprite = null;
+    SelectionPanel selectionPanel;
 
     [SerializeField]
     private Transform context;
@@ -31,7 +38,7 @@ public class CommandPanelUI : MonoBehaviour
         { KeyCode.B, 14 },
     };
 
-    public bool AttackMove = false;
+    bool blockUI = false;
 
     private void Start()
     {
@@ -67,6 +74,12 @@ public class CommandPanelUI : MonoBehaviour
                 commandButtons[id].onClick.Invoke(); // optional
             }
         }
+
+        if (!blockUI)
+        {
+            // Update Command Panel here
+            FigureoutPanelFromSelection(selectionPanel.GetSelectedUnits());
+        }
     }
 
     public void ClearPanel()
@@ -97,7 +110,26 @@ public class CommandPanelUI : MonoBehaviour
 
     public List<CommandButton.Command> GetNoCommands()
     {
+        SetOrderAction(null);
         return new List<CommandButton.Command>(); ;
+    }
+
+    void SetOrderAction(System.Action<RaycastHit> newOrderAction)
+    {
+        if (newOrderAction == null)
+        {
+            newOrderAction = (position) => { };
+        }
+        HandleOrder = newOrderAction;
+        HandleOrder += (position) =>
+        {
+            blockUI = false;
+        };
+    }
+
+    void StartBlockUI()
+    {
+        blockUI = true;
     }
 
     public List<CommandButton.Command> GetMilitaryUnitCommands()
@@ -107,41 +139,146 @@ public class CommandPanelUI : MonoBehaviour
 
         CommandButton.Command attackMove = new CommandButton.Command();
         attackMove.SlotId = 0;
-        attackMove.Icon = attackMoveSprite;
+
+        string attackMoveSpriteName = "data\\ui_buttons\\attack_move";
+        CustomSpriteLoader.IconReturnData attackMoveSprite = CustomSpriteLoader.Instance.LoadIconSprite(attackMoveSpriteName);
+        if (attackMoveSprite != null && attackMoveSprite.sprite != null)
+        {
+            attackMove.Icon = attackMoveSprite.sprite;
+        }
         attackMove.Name = "Attack Move";
         attackMove.Callback = () => {
-            Debug.Log($"Clicked for Attack Move");
-            AttackMove = true; 
+            //Debug.Log($"Clicked for Attack Move");
+            System.Action OnCancel = () => {
+                //SetCommands(GetShipUnDockedCommands());
+                FigureoutPanelFromSelection(selectionPanel.GetSelectedUnits());
+                Debug.Log("Cancelled attack move and going back to normal");
+            };
+            SetCommands(GetOrderOrCancelCommands("Attack Move", OnCancel));
+            StartBlockUI();
         }; // Implement Attack Move Toggle when pressed
 
-        //CommandButton.Command patrolMove = new CommandButton.Command();
-        //patrolMove.SlotId = 1;
-        //patrolMove.Name = "Patrol Move";
-        //patrolMove.Callback = () => { }; // Implement Patrol Move Toggle when pressed
-        
-        //CommandButton.Command normalMove = new CommandButton.Command();
-        //normalMove.SlotId = 4;
-        //normalMove.Name = "Normal Move";
-        //normalMove.Callback = () => { }; // Implement Patrol Move Toggle when pressed
-
         commandButtons.Add(attackMove);
-        //commandButtons.Add(patrolMove);
-        //commandButtons.Add(normalMove);
 
+        SetOrderAction((hit) =>
+        {
+            List<ulong> ids = new List<ulong>();
+            foreach (Unit u in selectionPanel.GetSelectedUnits())
+            {
+                if (u.GetType() == typeof(MovableUnit))
+                {
+                    if (u.playerId == 1)
+                        ids.Add(u.GetUnitID());
+                }
+            }
+
+            if (ids.Count > 0)
+            {
+                MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
+                moveUnitsCommand.action = MoveUnitsCommand.commandName;
+                moveUnitsCommand.unitIDs = new List<ulong>();
+                moveUnitsCommand.unitIDs.AddRange(ids);
+                moveUnitsCommand.position = hit.point;
+                moveUnitsCommand.IsAttackMove = this.blockUI;
+                InputManager.Instance.SendInputCommand(moveUnitsCommand);
+            }
+        });
         return commandButtons;
     }
 
-    public List<CommandButton.Command> GetShipCommands()
+    public List<CommandButton.Command> GetOrderOrCancelCommands(string name, System.Action OnCancel)
+    {
+        blockUI = true;
+        List<CommandButton.Command> commandButtons = new List<CommandButton.Command>();
+        CommandButton.Command action = new CommandButton.Command();
+        action.SlotId = 14;
+        string stopSpriteName = "data\\ui_buttons\\cancelIcon";
+        CustomSpriteLoader.IconReturnData stopSprite = CustomSpriteLoader.Instance.LoadIconSprite(stopSpriteName);
+        if (stopSprite != null && stopSprite.sprite != null)
+        {
+            action.Icon = stopSprite.sprite;
+        }
+        action.Name = name;
+        if (OnCancel != null)
+        {
+            OnCancel += () => { blockUI = false; };
+        }
+        action.Callback = () => OnCancel?.Invoke();
+        commandButtons.Add(action);
+        return commandButtons;
+    }
+
+    public List<CommandButton.Command> GetShipDockedCommands()
+    {
+        List<CommandButton.Command> commandButtons = new List<CommandButton.Command>();
+
+        CommandButton.Command dockOnShore = new CommandButton.Command();
+        SetOrderAction((hit) =>
+        {
+            List<ulong> ids = new List<ulong>();
+            foreach (Unit u in selectionPanel.GetSelectedUnits())
+            {
+                if (u.GetType() == typeof(MovableUnit))
+                {
+                    if (u.playerId == 1)
+                        ids.Add(u.GetUnitID());
+                }
+            }
+
+            if (ids.Count > 0)
+            {
+                if (this.blockUI)
+                {
+                    if (hit.collider.TryGetComponent(out MovableUnit targetUnit))
+                    {
+                        if (targetUnit.IsShip())
+                        {
+                            
+                        }
+                        Debug.Log($"{hit.collider.name}");
+                    }
+                    DockShipUnitCommand dockShipUnitCommand = new DockShipUnitCommand();
+                    dockShipUnitCommand.action = DockShipUnitCommand.commandName;
+                    dockShipUnitCommand.unitIDs = new List<ulong>();
+                    dockShipUnitCommand.unitIDs.AddRange(ids);
+                    dockShipUnitCommand.position = hit.point;
+                    InputManager.Instance.SendInputCommand(dockShipUnitCommand);
+                }
+                else
+                {
+                    MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
+                    moveUnitsCommand.action = MoveUnitsCommand.commandName;
+                    moveUnitsCommand.unitIDs = new List<ulong>();
+                    moveUnitsCommand.unitIDs.AddRange(ids);
+                    moveUnitsCommand.position = hit.point;
+                    moveUnitsCommand.IsAttackMove = this.blockUI;
+                    InputManager.Instance.SendInputCommand(moveUnitsCommand);
+                }
+            }
+        });
+        return commandButtons;
+    }
+
+    public List<CommandButton.Command> GetShipUnDockedCommands()
     {
         List<CommandButton.Command> commandButtons = new List<CommandButton.Command>();
 
         CommandButton.Command dockOnShore = new CommandButton.Command();
         dockOnShore.SlotId = 0;
-        dockOnShore.Icon = attackMoveSprite;
+        string attackMoveSpriteName = "data\\ui_buttons\\dock_on_shore";
+        CustomSpriteLoader.IconReturnData dockOnShoreSprite = CustomSpriteLoader.Instance.LoadIconSprite(attackMoveSpriteName);
+        if (dockOnShoreSprite != null && dockOnShoreSprite.sprite != null)
+        {
+            dockOnShore.Icon = dockOnShoreSprite.sprite;
+        }
         dockOnShore.Name = "Ship Dock";
         dockOnShore.Callback = () => {
-            Debug.Log("$Clicked for docking on shore");
-            AttackMove = true;
+            System.Action OnCancel = () => {
+                SetCommands(GetShipUnDockedCommands());
+                Debug.Log("Cancelled command and now getting backed undocked command UI");
+            };
+            SetCommands(GetOrderOrCancelCommands("Dock ship", OnCancel));
+            //AttackMove = true;
         };
         commandButtons.Add(dockOnShore);
         return commandButtons;
@@ -178,7 +315,8 @@ public class CommandPanelUI : MonoBehaviour
 
         // 0 = no command.
         // 1 = military command
-        // 2 = ship command
+        // 2 = ship command docked
+        // 3 = ship command undocked
         int useCommandType = 0;
 
         foreach (Unit unit in selectedUnits)
@@ -188,8 +326,11 @@ public class CommandPanelUI : MonoBehaviour
                 MovableUnit movableUnit = (MovableUnit)unit;
                 if (movableUnit.shipData.isShipMode)
                 {
-                    useCommandType = 2;
-                    return;
+                    if (movableUnit.shipData.isDocked) 
+                        useCommandType = 2;
+                    else 
+                        useCommandType = 3;
+                    break;
                 }
                 if (movableUnit.unitTypeComponent.GetType() == typeof(CombatComponent))
                 {
@@ -207,7 +348,12 @@ public class CommandPanelUI : MonoBehaviour
                 break;
             case 2:
                 {
-                    SetCommands(GetShipCommands());
+                    SetCommands(GetShipDockedCommands());
+                }
+                break;
+            case 3:
+                {
+                    SetCommands(GetShipUnDockedCommands());
                 }
                 break;
         }

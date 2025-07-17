@@ -1,3 +1,4 @@
+using Codice.CM.Client.Differences;
 using Newtonsoft.Json;
 using NUnit;
 using System;
@@ -8,8 +9,10 @@ using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.UIElements;
+using static CombatComponent;
 using static CommonStructures;
 using static UnityEditor.Experimental.AssetDatabaseExperimental.AssetDatabaseCounters;
+using static UnityEngine.GraphicsBuffer;
 using static UnityEngine.UI.CanvasScaler;
 
 public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.IMapSaveLoad
@@ -45,7 +48,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     public float rotationSpeed = 5.0f;
 
     private float eulerAnglesY = 0.0f;
-    [SerializeField] private Rigidbody rb;
+    [SerializeField] public Rigidbody rb;
     [SerializeField] public Collider solidCollider;
     [SerializeField] private Unit unit;
 
@@ -65,6 +68,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         IsAutoReverseable = 1 << 3,
         CanApplyBoidsAvoidance = 1 << 4,
         LockedRotation = 1 << 5,
+        UseSteering = 1 << 6
     }
 
     public int directionCount = 8;
@@ -169,15 +173,21 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             positions.Clear();
         }
 
-        if (rb)
+        if (rb && !rb.isKinematic)
         {
-            if (!rb.isKinematic)
-                rb.linearVelocity = Vector3.zero;
+            rb.linearVelocity = Vector3.zero;
+            //if (IsOnShip())
+            //{
+            //    rb.isKinematic = true;
+            //}
+            //else
+            //{
+            //    rb.isKinematic = false;
+            //}
         }
         if (enabled)
         {
-            if (movementState == State.Moving)
-                movementState = State.Idle;
+            ChangeState(State.Idle);
             enabled = false;
         }
     }
@@ -195,6 +205,16 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     void ControlRotation(Vector3 newPosition, Vector3 oldPosition, float deltaTime)
     {
+        void SetAngle(float angle)
+        {
+            if (rb)
+            {
+                rb.MoveRotation(Quaternion.Euler(new Vector3(0, angle, 0)));
+                return;
+            }
+            transform.localEulerAngles = new Vector3(0, angle, 0);
+        }
+
         Vector3 diff = newPosition - oldPosition;
         float yAngle = transform.localEulerAngles.y;
         if (HasState(MovementFlag.LockedRotation))
@@ -214,13 +234,15 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             {
                 eulerAnglesY = Mathf.MoveTowardsAngle(eulerAnglesY, yAngle, rotationDelta);
                 finalEulerAnglesY = Utilities.SnapToDirections(eulerAnglesY, directionCount);
-                transform.localEulerAngles = new Vector3(0, finalEulerAnglesY, 0);
+                //transform.localEulerAngles = new Vector3(0, finalEulerAnglesY, 0);
+                SetAngle(finalEulerAnglesY);
             }
             else
             {
                 eulerAnglesY = Mathf.MoveTowardsAngle(transform.localEulerAngles.y, yAngle, rotationDelta);
                 finalEulerAnglesY = eulerAnglesY;
-                transform.localEulerAngles = new Vector3(0, finalEulerAnglesY, 0);
+                //transform.localEulerAngles = new Vector3(0, finalEulerAnglesY, 0);
+                SetAngle(finalEulerAnglesY);
             }
         }
     }
@@ -233,6 +255,18 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         var desiredPos2D = Utilities.ToVector2XZ(positions[0]);
         var nextPos2D = Vector2.MoveTowards(oldPos2D, desiredPos2D, movementDelta);
         var nearbyObjs = UnitManager.Instance.spatialHashGrid.QueryInRadius(transform.position, radius + 0.14f);
+
+        bool useSteering = HasState(MovementFlag.UseSteering);
+        if (useSteering)
+        {
+            Vector2 toTarget = (desiredPos2D - oldPos2D).normalized;
+            Vector2 forward2D = Utilities.ToVector2XZ(transform.forward).normalized;
+            float angleDiff = Vector2.Angle(forward2D, toTarget);
+            if (angleDiff > 90f) return; // Too sharp to move forward
+
+            float distance = (nextPos2D - oldPos2D).magnitude;
+            nextPos2D = oldPos2D + forward2D * distance;
+        }
 
         // 2. Adjust height via raycast if needed
         float targetY = positions[0].y;
@@ -406,6 +440,16 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     public bool HasPathPositions() { return positions.Count != 0; }
 
+    public bool IsPathfindingInQueue()
+    {
+        return pathfindingStatus == PathfindingStatus.RequestedForPathfinding;
+    }
+
+    public bool AnyPathOperationInProgress()
+    {
+        return HasPathPositions() || IsPathfindingInQueue();
+    }
+
     Vector3 SampleNavMesh(Vector2 pos2D, float y)
     {
         var worldPos = new Vector3(pos2D.x, y, pos2D.y);
@@ -444,7 +488,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         {
             if (otherMovementComponent.crowdID == crowdID)
             {
-                Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, true);
+                //Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, true);
                 NativeLogger.Log($"Started ignoring collider: {other.name}");
             }
         }
@@ -456,14 +500,14 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         {
             if (otherMovementComponent.crowdID == crowdID)
             {
-                Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, false);
+                //Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, false);
                 NativeLogger.Log($"Remove ignoring collider: {other.name}");
             }
             else
             {
                 if (Physics.GetIgnoreCollision(solidCollider, otherMovementComponent.solidCollider))
                 {
-                    Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, false);
+                    //Physics.IgnoreCollision(solidCollider, otherMovementComponent.solidCollider, false);
                     NativeLogger.Log($"Remove ignoring collider: {other.name}");
                 }
             }
@@ -481,13 +525,14 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
             Vector3 oldPosition = transform.localPosition;
             Vector3 newPosition = Vector3.MoveTowards(transform.localPosition, position, movementDeltaValue);
-            ControlPosition(movementDeltaValue, deltaTime);
 
             bool controlRotation = HasState(MovementFlag.ControlRotation);
             if (controlRotation)
             {
                 ControlRotation(newPosition, oldPosition, deltaTime);
             }
+
+            ControlPosition(movementDeltaValue, deltaTime);
 
             Vector2 transformLocalPos2D = Utilities.ToVector2XZ(transform.localPosition);
             Vector2 position2D = Utilities.ToVector2XZ(position);
@@ -530,7 +575,9 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         //movementState = State.Idle;
         if (rb)
         {
-            rb.linearVelocity = Vector3.zero;
+            if (!rb.isKinematic)
+                rb.linearVelocity = Vector3.zero;
+
             rb.linearDamping = 50;
             //rb.isKinematic = true;
         }
@@ -772,6 +819,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
                 }
 
                 SetPositionData(pathPoints, isMoving);
+                pathfindingStatus = PathfindingStatus.NoPathfindingCalled;
                 return;
             }
         };

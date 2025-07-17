@@ -71,7 +71,7 @@ public abstract class BasePlayModeTest
     }
 
     protected List<MovableUnit> SpawnUnitsAt(IEnumerable<Vector3> positions,
-                                        Action<MovableUnit> init = null)
+                                        Action<Unit> init = null)
     {
         var list = new List<MovableUnit>();
         foreach (var pos in positions)

@@ -97,26 +97,9 @@ public class SelectionPanel : MonoBehaviour
     {
         ClearSelectionButtons();
 
-        List<Unit> filteredUnits = new List<Unit>();
         for (int i = 0; i < units.Count && i < 60; i++)
         {
-            var unit = units[i];
-            if (unit.GetType() == typeof(MovableUnit))
-            {
-                MovableUnit movableUnit = (MovableUnit)unit;
-                if (movableUnit.shipData.isShipMode == true)
-                {
-                    filteredUnits.Clear();
-                    filteredUnits.Add(unit);
-                    break;
-                }
-                filteredUnits.Add(unit);
-            }
-        }
-
-        for (int i = 0; i < filteredUnits.Count && i < 60; i++)
-        {
-            Unit unit = filteredUnits[i];
+            Unit unit = units[i];
             
             // TODO: make unit to have sprite
             if (unit.GetType() == typeof(MovableUnit))

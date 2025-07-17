@@ -110,7 +110,7 @@ public class NewTestScript
 
             UnitManager.Instance.ReleaseMovableUnitFromPool(units[0]);
 
-            System.Action<MovableUnit> SetSpawnData = (unit) =>
+            System.Action<Unit> SetSpawnData = (unit) =>
             {
                 unit.unitDataName = registeredUnitNames[counter];
                 unit.playerId = 1;

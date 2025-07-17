@@ -40,6 +40,11 @@ public class Unit : MonoBehaviour, MapLoader.IMapSaveLoad
         UnitManager.Instance.UnRegister(this);
     }
 
+    public virtual bool IsSelectable()
+    {
+        return false;
+    }
+
     public void Load(MapLoader.SaveLoadData data)
     {
         UnitData unitData = data as UnitData;
