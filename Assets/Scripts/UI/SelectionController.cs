@@ -308,7 +308,7 @@ public class SelectionController : MonoBehaviour
                     selectedShip = movableUnit;
                     continue;
                 }
-                if (movableUnit.movementComponent.IsOnShip()) continue;
+                //if (movableUnit.movementComponent.IsOnShip()) continue;
                 filteredUnits.Add(unit);
             }
         }

@@ -272,7 +272,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         float targetY = positions[0].y;
         if (UseRaycastHeight())
         {
-            if (TryGetGroundHeight(nextPos2D, out float groundY))
+            if (TryGetGroundHeight(nextPos2D, positions[0].y, out float groundY))
             {
                 targetY = groundY;
             }
@@ -387,9 +387,9 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     bool ShouldApplyBoids() => HasState(MovementFlag.CanApplyBoidsAvoidance) && conditionToBlockBoids <= 0;
 
-    bool TryGetGroundHeight(Vector2 pos2D, out float y)
+    bool TryGetGroundHeight(Vector2 pos2D, float givenY, out float y)
     {
-        var origin = new Vector3(pos2D.x, positions[0].y, pos2D.y);
+        var origin = new Vector3(pos2D.x, givenY, pos2D.y);
         if (SelectionController.FindProperHit(origin, GetAreaMask()) is RaycastHit hit)
         {
             y = hit.point.y;
@@ -875,5 +875,16 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         Load(data);
         //MovementComponentData movementComponentData = data as MovementComponentData;
         //enabled = movementComponentData.enabled;
+    }
+
+    internal void FixGround()
+    {
+        //float targetY = transform.position.y;
+        //Vector2 pos2D = Utilities.ToVector2XZ(transform.position);
+        //Vector3 samplePos = SampleNavMesh(pos2D, targetY);
+        //if (TryGetGroundHeight(pos2D, samplePos.y, out targetY))
+        //{
+        //    transform.position = new Vector3(pos2D.x, targetY, pos2D.y);
+        //}
     }
 }

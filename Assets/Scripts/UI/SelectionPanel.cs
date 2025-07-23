@@ -146,7 +146,7 @@ public class SelectionPanel : MonoBehaviour
                     movableUnit.statComponent.OnDeathCallback += deathCallback;
 
                 selectedUnits.Add(unit);
-                Debug.Log("Setting up id: " + btn.gameObject.name);
+                NativeLogger.Log("Setting up id: " + btn.gameObject.name);
                 
             }
         }

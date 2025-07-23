@@ -32,8 +32,9 @@ public class AttackMoveAIModule : BasicMovementAIModule
         base.Process_MoveTowardsPoint();
     }
 
-    public override void OnChangeState(State newState)
+    public override void OnChangeState(State newState, bool force)
     {
+        base.OnChangeState(newState, force);
         switch (newState)
         {
             case State.MoveTowardsPoint:

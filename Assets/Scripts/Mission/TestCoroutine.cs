@@ -1,4 +1,5 @@
 using log4net;
+using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -24,7 +25,10 @@ public class TestCoroutine : MonoBehaviour
                 new Vector3(127.45f, 0f, 97.517f),
                 new Vector3(127.45f, 0f, 98.54f),
                 new Vector3(127.45f, 0f, 98.03f),
-                new Vector3(127.45f, 0f, 99.11f)
+                new Vector3(127.45f, 0f, 99.11f),
+                new Vector3(127.45f, 0f, 99.6f),
+                new Vector3(127.55f, 0f, 97.517f),
+                new Vector3(127.55f, 0f, 98.54f),
             };
 
             List<MovableUnit> playerUnits = new();
@@ -101,7 +105,7 @@ public class TestCoroutine : MonoBehaviour
             MovableUnit enemy_ship = null;
             {
                 // Spawn ship
-                Vector3 pos = new Vector3(132.1f, 0f, 109.38f);
+                Vector3 pos = new Vector3(132.1f, 0f, 109.48f);
 
                 System.Action<Unit> PreSpawnAction = (unit) =>
                 {
@@ -119,7 +123,7 @@ public class TestCoroutine : MonoBehaviour
                 enemy_ship = UnitManager.Instance.GetMovableUnitFromPool(PreSpawnAction);
             }
 
-            yield return new DeterministicWaitForSeconds(5);
+            yield return new DeterministicWaitForSeconds(2);
 
             if (enemy_ship)
             {
@@ -137,8 +141,38 @@ public class TestCoroutine : MonoBehaviour
                 InputManager.Instance.SendInputCommand(moveUnitsCommand);
             }
 
+            yield return new DeterministicWaitForSeconds(1);
+
+            if (playerShip)
+            {
+                List<ulong> unitIds = new List<ulong>();
+                foreach (var npc in playerUnits)
+                {
+                    unitIds.Add(npc.id);
+                }
+
+                MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
+                moveUnitsCommand.action = MoveUnitsCommand.commandName;
+                moveUnitsCommand.unitIDs = unitIds;
+                moveUnitsCommand.position = playerShip.transform.position;
+                moveUnitsCommand.IsAttackMove = false;
+                InputManager.Instance.SendInputCommand(moveUnitsCommand);
+            }
+
+            bool CheckIfAllHaveUnitsOnBoard()
+            {
+                if (enemy_ship.shipData.unitsOnShip.Count != enemyUnits.Count)
+                {
+                    return false;
+                }
+                if (playerShip.shipData.unitsOnShip.Count != playerUnits.Count)
+                {
+                    return false;
+                }
+                return true;
+            }
             
-            while (enemy_ship.shipData.unitsOnShip.Count != enemyUnits.Count)
+            while (!CheckIfAllHaveUnitsOnBoard())
             {
                 yield return new DeterministicWaitForSeconds(0);
             }
@@ -152,6 +186,14 @@ public class TestCoroutine : MonoBehaviour
                 moveUnitsCommand.position = newCopiedPosition_0;
                 moveUnitsCommand.IsAttackMove = false;
                 InputManager.Instance.SendInputCommand(moveUnitsCommand);
+
+                yield return new DeterministicWaitForSeconds(1);
+
+                BoardToShipCommand dockToShipCommand = new BoardToShipCommand();
+                dockToShipCommand.action = BoardToShipCommand.commandName;
+                dockToShipCommand.unitIDs = new List<ulong> { playerShip.id };
+                dockToShipCommand.targetID = enemy_ship.id;
+                InputManager.Instance.SendInputCommand(dockToShipCommand);
             }
 
             bool CheckShipAndNPCsDead()

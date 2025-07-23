@@ -229,20 +229,37 @@ public class CommandPanelUI : MonoBehaviour
             {
                 if (this.blockUI)
                 {
+                    bool foundShip = false;
+                    Debug.Log($"{hit.collider.name}");
                     if (hit.collider.TryGetComponent(out MovableUnit targetUnit))
                     {
                         if (targetUnit.IsShip())
                         {
-                            
+                            foundShip = true;
                         }
-                        Debug.Log($"{hit.collider.name}");
+                        if (!foundShip)
+                        {
+                            targetUnit = targetUnit.GetBoardedShip();
+                        }
+                        if (foundShip) {
+                            BoardToShipCommand dockToShipCommand = new BoardToShipCommand();
+                            dockToShipCommand.action = BoardToShipCommand.commandName;
+                            dockToShipCommand.unitIDs = new List<ulong> { };
+                            dockToShipCommand.unitIDs.AddRange(ids);
+                            dockToShipCommand.targetID = targetUnit.GetUnitID();
+                            Debug.Log($"{hit.collider.name}");
+                            InputManager.Instance.SendInputCommand(dockToShipCommand);
+                        }
                     }
-                    DockShipUnitCommand dockShipUnitCommand = new DockShipUnitCommand();
-                    dockShipUnitCommand.action = DockShipUnitCommand.commandName;
-                    dockShipUnitCommand.unitIDs = new List<ulong>();
-                    dockShipUnitCommand.unitIDs.AddRange(ids);
-                    dockShipUnitCommand.position = hit.point;
-                    InputManager.Instance.SendInputCommand(dockShipUnitCommand);
+                    if (!foundShip)
+                    {
+                        DockShipUnitCommand dockShipUnitCommand = new DockShipUnitCommand();
+                        dockShipUnitCommand.action = DockShipUnitCommand.commandName;
+                        dockShipUnitCommand.unitIDs = new List<ulong>();
+                        dockShipUnitCommand.unitIDs.AddRange(ids);
+                        dockShipUnitCommand.position = hit.point;
+                        InputManager.Instance.SendInputCommand(dockShipUnitCommand);
+                    }
                 }
                 else
                 {

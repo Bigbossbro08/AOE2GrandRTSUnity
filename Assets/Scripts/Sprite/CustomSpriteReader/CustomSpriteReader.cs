@@ -193,7 +193,6 @@ public class CustomSpriteReader : MonoBehaviour
         PlayerData playerData = UnitManager.Instance.GetPlayerData(deterministicVisualUpdater.playerId);
         if (playerData != null)
         {
-            // TODO: Add player color support
             CustomSpriteLoader.SpriteReturnData spriteReturnData = CustomSpriteLoader.Instance.LoadSprite(spriteName);
             _renderer.material.mainTexture = spriteReturnData.mainTexture;
             MaterialPropertyBlock block = new MaterialPropertyBlock();

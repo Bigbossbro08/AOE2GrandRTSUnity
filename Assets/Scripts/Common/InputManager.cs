@@ -329,21 +329,7 @@ public class DockShipUnitCommand : InputCommand
                 startPosition = unit.transform.position;
             }
 
-            if (movableUnit.shipData.isDocked)
-            {
-                //IEnumerator<IDeterministicYieldInstruction> DelayedDock()
-                //{
-                //    yield return new DeterministicWaitForSeconds(0);
-                //    movableUnit.shipData.checkUndockableAtStop = true;
-                //}
-                //DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(DelayedDock());
-            }
-            else
-            {
-                movableUnit.shipData.checkUndockableAtStop = true;
-            }
-
-            movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule,
+            movableUnit.SetAIModule(UnitAIModule.AIModule.DockToShoreUnitAIModule,
                 position, newCrowdID, offset, startPosition);
         }
     }
@@ -412,31 +398,31 @@ public class DeleteUnitsCommand : InputCommand
 public class StopUnits : InputCommand
 {
     public const string commandName = "Stop Units";
-    public ulong unitID;
-    public Vector3 position;
-    public Vector3 targetToDock;
+    public List<ulong> unitIDs;
 
     public void Execute()
     {
-        Unit unit = UnitManager.Instance.GetUnit(unitID);
-        if (unit)
-        {
-            if (unit.GetType() == typeof(MovableUnit))
+        foreach (ulong unitID in unitIDs) {
+            Unit unit = UnitManager.Instance.GetUnit(unitID);
+            if (unit)
             {
-                MovableUnit movableUnit = unit as MovableUnit;
-                if (StatComponent.IsUnitAliveOrValid(movableUnit))
+                if (unit.GetType() == typeof(MovableUnit))
                 {
-                    movableUnit.movementComponent.Stop();
+                    MovableUnit movableUnit = unit as MovableUnit;
+                    if (StatComponent.IsUnitAliveOrValid(movableUnit))
+                    {
+                        movableUnit.movementComponent.Stop();
+                    }
                 }
+                // shipUnit.StartPathfind(position);
             }
-            // shipUnit.StartPathfind(position);
         }
     }
 }
 
-public class DockToShipCommand : InputCommand
+public class BoardToShipCommand : InputCommand
 {
-    public const string commandName = "Attack Unit Command";
+    public const string commandName = "Board To Ship Command";
     public List<ulong> unitIDs = new List<ulong>();
     public ulong targetID = 0;
 
@@ -462,9 +448,11 @@ public class DockToShipCommand : InputCommand
                 ulong id = unitIDs[i];
                 if (IsValidShip(id, out MovableUnit movableUnit))
                 {
-
+                    movableUnit.ResetUnit(true);
+                    movableUnit.shipData.SetDockedMode(false);
+                    ulong newCrowdID = ++UnitManager.crowdIDCounter;
+                    movableUnit.SetAIModule(UnitAIModule.AIModule.BoardshipUnitAIModule, targetShip, newCrowdID, Vector3.zero, true);
                 }
-
             }
         }
 
@@ -621,6 +609,12 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
                 {
                     AttackUnitCommand attackUnitCommand = command as AttackUnitCommand;
                     attackUnitCommand.Execute();
+                }
+                break;
+            case BoardToShipCommand.commandName:
+                {
+                    BoardToShipCommand dockToShipCommand = command as BoardToShipCommand;
+                    dockToShipCommand.Execute();
                 }
                 break;
             case DeleteUnitsCommand.commandName:

@@ -25,9 +25,15 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
         position = self.movementComponent.GetLastPointInPathfinding();
     }
 
-    public virtual void OnChangeState(State newState)
+    // TODO will be changed
+    public virtual void OnChangeState(State newState, bool force)
     {
+        if (newState == State.ReachedDestination && !force)
+        {
+            self.ResetToDefaultModule();
 
+            enabled = false;
+        }
     }
 
     void ChangeState(State newState, bool force = false)
@@ -54,13 +60,10 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
                     //{
                     //    self.movementComponent.rb.isKinematic = true;
                     //}
-
-                    self.ResetToDefaultModule();
-                    enabled = false;
                 }
                 break;
         }
-        OnChangeState(newState);
+        OnChangeState(newState, force);
         currentState = newState;
     }
 
@@ -71,7 +74,7 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
 
     bool IsUpdateBlockable()
     {
-        return self.actionComponent.IsPlayingAction();
+        return !self.IsActionBlocked();
     }
 
     private void Process_WaitingForPath()
@@ -175,7 +178,7 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
     {
         if (StatComponent.IsUnitAliveOrValid(self))
         {
-            if (self.IsShip() && !self.shipData.IsDrivable())
+            if (!self.IsControllable())
             {
                 return;
             }

@@ -61,6 +61,28 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         return StatComponent.IsUnitAliveOrValid(self);
     }
 
+    static bool CanEnemyUnitBeAdded(Unit unit, MovableUnit self)
+    {
+        if (unit == null) return false;
+        if (self)
+        {
+            if (unit == self) return false;
+            if (unit.playerId == self.playerId) return false;
+            if (unit.GetType() == typeof(MovableUnit))
+            {
+                MovableUnit movableUnit = (MovableUnit)unit; 
+                if (!StatComponent.IsUnitAliveOrValid((MovableUnit)unit)) return false;
+                if (movableUnit.IsShip())
+                {
+
+                }
+            }
+            
+        }
+
+        return true;
+    }
+
     public static bool FindForEnemyUnit(MovableUnit self, float lineOfSight, out MovableUnit enemyUnit, List<Unit> units = null)
     {
         // Do lookup operation here
@@ -124,7 +146,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                     chainTargets.Add(target);
                 }
 
-                if (FindForEnemyUnit(self, lineOfSight, out MovableUnit targetUnit, chainTargets))
+                if (FindForEnemyUnit(self, lineOfSight, out MovableUnit targetUnit, chainTargets) && ValidateTarget(targetUnit))
                 {
                     SetTarget(targetUnit);
                     SetDesiredState(State.MoveTowardsTarget);
@@ -133,7 +155,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
             }
 
             {
-                if (FindForEnemyUnit(self, lineOfSight, out MovableUnit targetUnit))
+                if (FindForEnemyUnit(self, lineOfSight, out MovableUnit targetUnit) && ValidateTarget(targetUnit))
                 {
                     SetTarget(targetUnit);
                     SetDesiredState(State.MoveTowardsTarget);
@@ -161,12 +183,46 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         return targetPosition;
     }
 
-    void SetTarget(MovableUnit target)
+    bool ValidateTarget(MovableUnit target)
     {
         if (!StatComponent.IsUnitAliveOrValid(target))
         {
-            return;
+            return false;
         }
+
+        if (!self.IsShip() && self.IsMeleeUnit() && self.movementComponent.IsOnShip())
+        {
+            if (target.IsShip())
+            {
+                return false;
+            }
+
+            MovableUnit selfBoardedShip = self.GetBoardedShip();
+            MovableUnit targetBoardedShip = target.GetBoardedShip();
+            if (selfBoardedShip && targetBoardedShip)
+            {
+                if (selfBoardedShip.shipData.IsShipIsDockedAgainstAnotherShip(targetBoardedShip))
+                {
+                    return true;
+                }
+                if (selfBoardedShip != targetBoardedShip)
+                {
+                    return false;
+                }
+            }
+        }
+        if (!self.IsShip() && self.IsMeleeUnit() && !self.movementComponent.IsOnShip())
+        {
+            if (target.IsShip())
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void SetTarget(MovableUnit target)
+    {
 
         void GetTargetsOfShip(MovableUnit ship)
         {
@@ -307,7 +363,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
 
     bool CheckTargetIsValid()
     {
-        if (self.IsShip() && !self.shipData.IsDrivable())
+        if (!self.IsControllable())
         {
             ClearTarget(true);
             self.movementComponent.Stop();
@@ -400,7 +456,6 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
         //if ((newTargetPosition - self.transform.position).sqrMagnitude > thresholdForMovingStateSqr)
         if (!IsTargetWithinRange())
         {
-            Debug.Log("Outt of range???");
             Vector3 diff = newTargetPosition - self.transform.position;
             SetDesiredState(State.MoveTowardsTarget);
             return;
@@ -494,7 +549,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
     {
         if (StatComponent.IsUnitAliveOrValid(self))
         {
-            if (self.IsShip() && !self.shipData.IsDrivable())
+            if (!self.IsControllable())
             {
                 return;
             }

@@ -46,11 +46,14 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
     [SerializeField] DeterministicVisualUpdater DeterministicVisualUpdater;
 
     Vector2Int lastGridCell;
+    Vector3 lastLocalPosition;
+    Vector3 deltaPosition;
 
     public string standSprite = "idle_archer";
 
     public string walkSprite = "move_archer";
 
+    [System.Serializable]
     public class ShipData
     {
         public bool isShipMode = false;
@@ -60,27 +63,60 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         public Rigidbody rigidbody = null;
         public NavMeshSurface navMeshSurface = null;
         public List<NavMeshLink> navMeshLinks = new List<NavMeshLink>();
+        public List<UnitManager.UnitJsonData.ShipData.NavLinkData> navLinkDatas = new List<UnitManager.UnitJsonData.ShipData.NavLinkData>();
         public bool isDocked = false;
-        public bool dockAgainstShip = false;
-        public bool checkUndockableAtStop = false;
         public List<MovableUnit> unitsOnShip = new List<MovableUnit>();
+        public int ownPlayerCount = 0;
         public PropUnit dockedProp = null;
         public NavMeshObstacle navMeshObstacle = null;
         public MeshCollider selectionCollider = null;
         string dockedPropName = null;
-        public bool canBeUndocked = false;
+        public MovableUnit targetBoardedShip = null;
+        public BoardedShipHandler boardedShipHandler = null;
 
         private MissionCollisionTriggerChecker shipCollisionTrigger = null;
+
+        void AddToShip(MovableUnit movableUnit)
+        {
+            if (unitsOnShip.Contains(movableUnit))
+                return; // Already added
+
+            if (ownPlayerCount == 0)
+            {
+                this.movableUnit.ChangePlayer(movableUnit.playerId);
+            }
+
+            if (movableUnit.playerId == this.movableUnit.playerId)
+            {
+                ownPlayerCount++;
+            }
+
+            unitsOnShip.Add(movableUnit);
+            movableUnit.OnRelease += OnCrewRelease;
+
+            NativeLogger.Log($"Unit: {movableUnit.id} added to ship with health {movableUnit.statComponent.GetHealth()}: {this.movableUnit.id}: and count on ship is {unitsOnShip.Count}");
+        }
+
+        void RemoveFromShip(MovableUnit movableUnit)
+        {
+            if (!unitsOnShip.Contains(movableUnit))
+                return;
+
+            unitsOnShip.Remove(movableUnit);
+            movableUnit.OnRelease -= OnCrewRelease;
+
+            if (movableUnit.playerId == this.movableUnit.playerId)
+            {
+                ownPlayerCount--;
+            }
+        }
 
         void OnCrewRelease(ulong id)
         {
             Unit unit = UnitManager.Instance.GetUnit(id);
             MovableUnit movableUnit = unit as MovableUnit;
-            if (unitsOnShip.Contains(movableUnit))
-            {
-                unitsOnShip.Remove(movableUnit);
-            }
-            movableUnit.OnRelease -= OnCrewRelease;
+            RemoveFromShip(movableUnit);
+            //movableUnit.OnRelease -= OnCrewRelease;
         }
 
         void OnShipColliderEnter(Collider other)
@@ -90,35 +126,25 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 MovableUnit movableUnit = other.GetComponent<MovableUnit>();
                 if (movableUnit && StatComponent.IsUnitAliveOrValid(movableUnit) && !movableUnit.shipData.isShipMode)
                 {
-                    if (unitsOnShip.Count == 0)
-                    {
-                        this.movableUnit.playerId = movableUnit.playerId;
-                        this.movableUnit.DeterministicVisualUpdater.RefreshVisuals();
-                    }
-
-                    movableUnit.OnRelease += OnCrewRelease;
-
-                    unitsOnShip.Add(movableUnit);
-                    Debug.Log($"Unit: {movableUnit.id} added to ship with health {movableUnit.statComponent.GetHealth()}: {this.movableUnit.id}: and count on ship is {unitsOnShip.Count}");
+                    AddToShip(movableUnit);
                 }
             }
 
-            canBeUndocked = unitsOnShip.Count > 0;
+            //canBeUndocked = unitsOnShip.Count > 0;
         }
 
         void OnShipColliderExit(Collider other) { 
             if (other.CompareTag("Military Unit"))
             {
                 MovableUnit movableUnit = other.GetComponent<MovableUnit>();
-                if (movableUnit && unitsOnShip.Contains(movableUnit))
+                if (movableUnit)
                 {
-                    movableUnit.OnRelease -= OnCrewRelease;
-                    unitsOnShip.Remove(movableUnit);
-                    Debug.Log($"Unit: {movableUnit.id} removed from ship: {this.movableUnit.id}: and count on ship is {unitsOnShip.Count}");
+                    RemoveFromShip(movableUnit);
+                    NativeLogger.Log($"Unit: {movableUnit.id} removed from ship: {this.movableUnit.id}: and count on ship is {unitsOnShip.Count}");
                 }
             }
 
-            canBeUndocked = unitsOnShip.Count > 0;
+            //canBeUndocked = unitsOnShip.Count > 0;
         }
 
         internal bool IsDrivable()
@@ -131,7 +157,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             Rigidbody rigidbody, 
             MovableUnit movableUnit)
         {
-            canBeUndocked = false;
+            this.targetBoardedShip = null;
             this.transform = transform;
             this.movableUnit = movableUnit;
             rigidbody.isKinematic = true;
@@ -226,6 +252,8 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                             navMeshLinks.Add(navMeshLink);
                             counter++;
                         }
+                        navLinkDatas.Clear();
+                        navLinkDatas.AddRange(unitData.ship_data.navlinks);
                     }
                 }
 
@@ -270,6 +298,77 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             isShipMode = true;
         }
 
+        public static void DockAgainstAnotherShip(MovableUnit a, MovableUnit b)
+        {
+            if (!StatComponent.IsUnitAliveOrValid(a) || !a.IsShip()) { return; }
+            if (!StatComponent.IsUnitAliveOrValid(b) || !b.IsShip()) { return; }
+
+            a.shipData.targetBoardedShip = b;
+            b.shipData.targetBoardedShip = a;
+            a.shipData.SetDockedMode(true, true);
+            b.shipData.SetDockedMode(true, true);
+            GameObject boardedShipHandlerGO = new GameObject("Ship To Ship Navmesh Holder");
+            BoardedShipHandler boardedShipHandler = boardedShipHandlerGO.AddComponent<BoardedShipHandler>();
+            a.shipData.boardedShipHandler = boardedShipHandler;
+            boardedShipHandler.shipA = a;
+            b.shipData.boardedShipHandler = boardedShipHandler;
+            boardedShipHandler.shipB = b;
+            var tempNavMeshGenerator = boardedShipHandlerGO.AddComponent<NavMeshSurface>();
+            a.transform.SetParent(boardedShipHandlerGO.transform, true);
+            b.transform.SetParent(boardedShipHandlerGO.transform, true);
+            GameObject tempBox = GameObject.CreatePrimitive(UnityEngine.PrimitiveType.Cube);
+            tempBox.transform.SetParent(boardedShipHandlerGO.transform, true);
+            tempBox.transform.position = (a.transform.position + b.transform.position) / 2;
+            tempBox.transform.rotation = UnityEngine.Quaternion.LookRotation((a.transform.position - b.transform.position).normalized);
+            tempBox.transform.localScale = new Vector3(1, 0.5f, Vector3.Distance(a.transform.position, b.transform.position) / 2);
+            tempNavMeshGenerator.collectObjects = CollectObjects.Children;
+            tempNavMeshGenerator.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.RenderMeshes;
+            tempNavMeshGenerator.defaultArea = 0;
+            tempNavMeshGenerator.BuildNavMesh();
+            Destroy(tempBox);
+            a.transform.SetParent(null, true);
+            b.transform.SetParent(null, true);
+        }
+
+        public bool IsShipIsDockedAgainstAnotherShip(MovableUnit ship)
+        {
+            if (isDocked) {
+                if (navMeshSurface.defaultArea == 4 && targetBoardedShip == ship)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void SetupNavLinkToShore(int navArea)
+        {
+            Debug.Assert(navMeshLinks.Count == navLinkDatas.Count);
+            for (int i = 0; i < navMeshLinks.Count; i++)
+            {
+                NavMeshLink navLink = navMeshLinks[i];
+                var navLinkData = navLinkDatas[i];
+                navLink.startPoint = (Vector3)navLinkData.start;
+                Vector3 newEndPoint = (Vector3)navLinkData.end;
+                //if (dockAgainstShip)
+                //{
+                //    //Debug.Log("Checking position to dock against ship");
+                //    int navAreaMask = navArea;
+                //    if (NavMesh.SamplePosition(navLink.transform.TransformPoint(navLink.endPoint),
+                //        out NavMeshHit navHit,
+                //        navLink.width,
+                //        navAreaMask))
+                //    {
+                //        newEndPoint = navHit.position;
+                //    }
+                //}
+                navLink.endPoint = newEndPoint;
+                navLink.gameObject.SetActive(true);
+                navLink.area = navArea;
+                navLink.UpdateLink();
+            }
+        }
+
         public void SetDockedMode(bool docked, bool dockAgainstShip = false)
         {
             if (!isShipMode) return;
@@ -279,25 +378,17 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             if (docked)
             {
                 movableUnit.movementComponent.Stop();
-                navMeshSurface.defaultArea = dockAgainstShip ? 4 : 0;
+                int navArea = dockAgainstShip ? 4 : 0;
+                navMeshSurface.defaultArea = navArea;
                 navMeshSurface.BuildNavMesh();
-
                 IEnumerator<IDeterministicYieldInstruction> DelayedLinkUpdate()
                 {
                     yield return new DeterministicWaitForSeconds(0);
-
-                    foreach (var navLink in navMeshLinks)
-                    {
-                        navLink.gameObject.SetActive(true);
-                        navLink.UpdateLink();
-                    }
+                    SetupNavLinkToShore(navArea);
                 }
-                foreach (var navLink in navMeshLinks)
-                {
-                    navLink.gameObject.SetActive(true);
-                    navLink.UpdateLink();
-                }
+                SetupNavLinkToShore(navArea);
                 DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(DelayedLinkUpdate());
+
                 isDocked = true;
 
                 foreach (var unit in unitsOnShip)
@@ -319,7 +410,10 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                     unit.movementComponent.Stop();
                     unit.movementComponent.rb.isKinematic = false;
                 }
-
+                //if (!dockAgainstShip)
+                //{
+                //    
+                //}
                 UnitManager.UnitJsonData.Prop propData = UnitManager.Instance.LoadPropJsonData(dockedPropName);
                 if (propData != null)
                 {
@@ -339,6 +433,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             }
             else
             {
+                RemoveBoardedShipHandler();
                 navMeshObstacle.enabled = false;
                 navMeshSurface.defaultArea = 4; // On ship surface
                 navMeshSurface.BuildNavMesh();
@@ -376,6 +471,19 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             }
         }
 
+        void RemoveBoardedShipHandler()
+        {
+            if (boardedShipHandler)
+            {
+                BoardedShipHandler tempBoardedShipHandler = boardedShipHandler;
+                boardedShipHandler.RemoveReferences();
+                if (tempBoardedShipHandler.gameObject)
+                {
+                    Destroy(tempBoardedShipHandler.gameObject);
+                }
+            }
+        }
+
         public void Deinitialize(Transform transform, Rigidbody rigidbody)
         {
             // Remove navmesh data & links
@@ -384,6 +492,8 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 navMeshSurface.RemoveData();
                 navMeshSurface = null;
             }
+
+            RemoveBoardedShipHandler();
 
             Transform visualTransform = transform.Find("Visual");
             if (visualTransform != null)
@@ -480,6 +590,13 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         }
     }
 
+    private void ChangePlayer(ulong playerId)
+    {
+        this.playerId = playerId;
+        this.DeterministicVisualUpdater.playerId = playerId;
+        this.DeterministicVisualUpdater.RefreshVisuals();
+    }
+
     public ShipData shipData;
     public MeshCollider meshCollider = null;
 
@@ -549,7 +666,8 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                     MovableUnit target = (MovableUnit)aiArgs[0];
                     ulong crowdId = (ulong)aiArgs[1];
                     Vector3 offset = (Vector3)aiArgs[2];
-                    targetFollowingMovementAIModule.InitializeAI(this, target, crowdId, offset);
+                    bool resetTargetOnClose = (bool)aiArgs[3];
+                    targetFollowingMovementAIModule.InitializeAI(this, target, crowdId, offset, resetTargetOnClose);
                 }
                 break;
             case UnitAIModule.AIModule.AttackMoveAIModule:
@@ -569,6 +687,35 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                     }
                     AttackMoveAIModule attackMoveAIModule = (AttackMoveAIModule)aiModule;
                     attackMoveAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
+                }
+                break;
+            case UnitAIModule.AIModule.BoardshipUnitAIModule:
+                {
+                    BoardshipUnitAIModule boardshipUnitAIModule = (BoardshipUnitAIModule)aiModule;
+                    MovableUnit target = (MovableUnit)aiArgs[0];
+                    ulong crowdId = (ulong)aiArgs[1];
+                    Vector3 offset = (Vector3)aiArgs[2];
+                    bool resetTargetOnClose = (bool)aiArgs[3];
+                    boardshipUnitAIModule.InitializeAI(this, target, crowdId, offset, resetTargetOnClose);
+                }
+                break;
+            case UnitAIModule.AIModule.DockToShoreUnitAIModule:
+                {
+                    Vector3 position = (Vector3)aiArgs[0];
+                    ulong crowdId = (ulong)aiArgs[1];
+                    Vector3 offset = Vector3.zero;
+                    Vector3? startPosition = null;
+                    if (aiArgs.Length == 3)
+                    {
+                        offset = (Vector3)aiArgs[2];
+                    }
+                    if (aiArgs.Length == 4)
+                    {
+                        offset = (Vector3)aiArgs[2];
+                        startPosition = (Vector3)aiArgs[3];
+                    }
+                    DockToShoreUnitAIModule dockToShoreUnitAIModule = (DockToShoreUnitAIModule)aiModule;
+                    dockToShoreUnitAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
                 }
                 break;
             //case UnitAIModule.AIModule.BasicShipAIModule:
@@ -603,9 +750,53 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         return null;
     }
 
+    public bool IsControllable()
+    {
+        if (IsShip())
+        {
+            if (!shipData.IsDrivable())
+            {
+                return false;
+            }
+            if (shipData.isDocked)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public bool IsActionBlocked()
+    {
+        if (actionComponent.IsPlayingAction())
+        {
+            return false;
+        }
+        if (IsShip())
+        {
+            if (!shipData.IsDrivable())
+            {
+                return false;
+            }
+            if (shipData.isDocked)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public bool IsShip()
     {
         return shipData != null && shipData.isShipMode;
+    }
+
+    public bool IsMeleeUnit()
+    {
+        CombatComponent combatComponent = unitTypeComponent as CombatComponent;
+        if (!combatComponent) return false;
+        if (combatComponent.attackRange != 0) return false;
+        return true;
     }
 
     public CustomSpriteLoader.IconReturnData GetSpriteIcon()
@@ -652,29 +843,31 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         standSprite = militaryUnit.standing;
         walkSprite = militaryUnit.walking;
 
-        if (militaryUnit.collisionData == null)
+        if (militaryUnit.collisionData != null && !string.IsNullOrEmpty(militaryUnit.collisionData.name))
+        {
+            AssimpMeshLoader.MeshReturnData meshReturnData = AssimpMeshLoader.Instance.LoadMeshFromAssimp(militaryUnit.collisionData.name);
+            float size = militaryUnit.collisionData.size == null ? 1 : militaryUnit.collisionData.size.Value;
+            UnityEngine.Mesh mesh = AssimpMeshLoader.ScaleMesh(meshReturnData.mesh, size);
+            meshCollider = gameObject.AddComponent<MeshCollider>();
+            meshCollider.sharedMesh = mesh;
+            meshCollider.convex = true;
+
+            movementComponent.solidCollider = meshCollider;
+            float radius = mesh.bounds.extents.magnitude;
+            movementComponent.radius = radius;
+            CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
+            capsuleCollider.enabled = false;
+            capsuleCollider.radius += radius;
+        } 
+        else
         {
             if (meshCollider)
                 Destroy(meshCollider);
             CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
             capsuleCollider.enabled = true;
+            capsuleCollider.radius = 0.14f;
+            movementComponent.radius = 0.14f;
             movementComponent.solidCollider = capsuleCollider;
-        } 
-        else
-        {
-            if (!string.IsNullOrEmpty(militaryUnit.collisionData.name))
-            {
-                AssimpMeshLoader.MeshReturnData meshReturnData = AssimpMeshLoader.Instance.LoadMeshFromAssimp(militaryUnit.collisionData.name);
-                float size = militaryUnit.collisionData.size == null ? 1 : militaryUnit.collisionData.size.Value;
-                UnityEngine.Mesh mesh = AssimpMeshLoader.ScaleMesh(meshReturnData.mesh, size);
-                meshCollider = gameObject.AddComponent<MeshCollider>();
-                meshCollider.sharedMesh = mesh;
-                meshCollider.convex = true;
-
-                movementComponent.solidCollider = meshCollider;
-                CapsuleCollider capsuleCollider = GetComponent<CapsuleCollider>();
-                capsuleCollider.enabled = false;
-            }
         }
 
         if (militaryUnit.ship_data == null)
@@ -796,6 +989,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     private void OnEnable()
     {
+        lastLocalPosition = transform.localPosition;
         OnRelease = (id) => { };
         Initialize();
         LoadMovableData(unitDataName, true);
@@ -856,32 +1050,6 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             DeterministicVisualUpdater.SetSpriteName(standSprite, true);
             DeterministicVisualUpdater.PlayOrResume(false);
         }
-        if (shipData != null && shipData.isShipMode)
-        {
-            if (shipData.checkUndockableAtStop && !shipData.isDocked)
-            {
-                // Do some check to find undockable spot. As in proper ground. Find friendly navmesh at navmesh links perhaps??
-                IEnumerator<IDeterministicYieldInstruction> DelayedDocking()
-                {
-                    yield return new DeterministicWaitForSeconds(0);
-                    if (!movementComponent.AnyPathOperationInProgress())
-                    {
-                        foreach (var navlink in shipData.navMeshLinks)
-                        {
-                            int navAreaMask = 1;
-                            if (NavMesh.SamplePosition(navlink.transform.TransformPoint(navlink.endPoint), out NavMeshHit navHit, navlink.width, navAreaMask))
-                            {
-                                DebugExtension.DebugWireSphere(navHit.position, Color.green, 0.2f, 5f);
-                                shipData.SetDockedMode(true);
-                                break;
-                            }
-                        }
-                    }
-                }
-                DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(DelayedDocking());
-            }
-            shipData.checkUndockableAtStop = false;
-        }
     }
 
     private void MovementComponent_OnStartMoving()
@@ -902,6 +1070,15 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 return true;
             }
             return false;
+        }
+
+        if (movementComponent.IsOnShip())
+        {
+            MovableUnit boardedShip = GetBoardedShip();
+            if (!boardedShip.shipData.isDocked)
+            {
+                return false;
+            }
         }
         return true;
     }
@@ -985,6 +1162,17 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
         UpdateGridCell();
+        UpdateVelocityCall();
+    }
+
+    void UpdateVelocityCall()
+    {
+        if (transform.localPosition != lastLocalPosition)
+        {
+            movementComponent.FixGround();
+            lastLocalPosition = transform.localPosition;
+        }
+        deltaPosition = transform.localPosition - lastLocalPosition;
     }
 
     public void UpdateGridCell()

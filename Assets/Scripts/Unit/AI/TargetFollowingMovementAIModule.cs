@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using TMPro;
 using Unity.Mathematics;
 using UnityEngine;
@@ -16,8 +17,8 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
 
     State desiredState;
     State currentState;
-    MovableUnit self;
-    MovableUnit target;
+    protected MovableUnit self;
+    protected MovableUnit target;
     float3 targetPosition;
     bool resetTargetOnClose = false;
     Vector3 offset;
@@ -25,10 +26,10 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
     const float thresholdForRepath = (float)(0.14 * DeterministicUpdateManager.FixedStep);
     const float thresholdForRepathSqr = thresholdForRepath * thresholdForRepath;
 
-    const float thresholdForTarget = (0.14f + 0.05f);
-    const float thresholdForTargetSqr = thresholdForTarget * thresholdForTarget;
+    //const float thresholdForTarget = (0.14f + 0.05f);
+    //const float thresholdForTargetSqr = thresholdForTarget * thresholdForTarget;
 
-    void ChangeState(State newState)
+    public void ChangeState(State newState, bool force = false)
     {
         if (newState == currentState) return;
 
@@ -42,7 +43,7 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
         {
             case State.MoveTowardsTarget:
                 {
-                    DoTargetFollow();
+                    DoTargetFollow(force);
                 }
                 break;
             case State.CloseToTarget:
@@ -52,12 +53,20 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
                 break;
             case State.NoTarget:
                 {
-                    self.ResetToDefaultModule();
-                    enabled = false;
                 }
                 break;
         }
+        OnChangeState(newState);
         currentState = newState;
+    }
+
+    public virtual void OnChangeState(State newState)
+    {
+        if (newState == State.NoTarget)
+        {
+            self.ResetToDefaultModule();
+            enabled = false;
+        }
     }
 
     bool CanTargetFollow()
@@ -69,7 +78,7 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
 
     private void DoTargetFollow(bool force = false)
     {
-        if (!CanTargetFollow()) { return; }
+        if (!CanTargetFollow() && !force) { return; }
         float3 newTargetPosition = target.transform.TransformPoint(offset);
         float3 diff = targetPosition - newTargetPosition;
         if (math.lengthsq(diff) > thresholdForRepathSqr || force)
@@ -90,8 +99,9 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
             this.offset = offset;
 
             // For hacky trigger rn
-            currentState = State.CloseToTarget;
-            desiredState = State.MoveTowardsTarget;
+            currentState = State.MoveTowardsTarget;
+            DoTargetFollow(true);
+            //desiredState = State.MoveTowardsTarget;
             enabled = true;
             return;
         }
@@ -112,13 +122,20 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
         return self.actionComponent.IsPlayingAction();
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    float GetTargetThresholdSqr(bool positiveOffset)
+    {
+        float thresholdForTarget = (target.movementComponent.radius * self.movementComponent.radius) + (positiveOffset ? 0.05f : - 0.05f);
+        float thresholdForTargetSqr = thresholdForTarget * thresholdForTarget;
+        return thresholdForTargetSqr;
+    }
+
     void Process_MoveTowardsTarget()
     {
         //Debug.Log("Processing MoveTowardsTarget");
         DoTargetFollow();
-
         float3 diff = (float3)target.transform.TransformPoint(offset) - (float3)self.transform.position;
-        if (math.lengthsq(diff) < thresholdForTargetSqr)
+        if (math.lengthsq(diff) < GetTargetThresholdSqr(false))
         {
             desiredState = State.CloseToTarget;
         }
@@ -134,7 +151,7 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
 
         //Debug.Log("Processing CloseToTarget");
         float3 diff = (float3)target.transform.TransformPoint(offset) - (float3)self.transform.position;
-        if (math.lengthsq(diff) > thresholdForTargetSqr)
+        if (math.lengthsq(diff) > GetTargetThresholdSqr(true))
         {
             desiredState = State.MoveTowardsTarget;
         }
@@ -155,7 +172,7 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
 
         if (desiredState != currentState)
         {
-            ChangeState(currentState);
+            ChangeState(desiredState);
             desiredState = currentState;
             return;
         }
