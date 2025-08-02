@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.AI;
+using static MovementComponent;
 using static Utilities;
 
 [System.Serializable]
@@ -93,6 +96,50 @@ public class MoveUnitsCommand : InputCommand
         // 3. Solve assignment
         List<int> assignment = HungarianAlgorithm.Solve(costMatrix).ToList();
         assignment.Reverse();
+
+        NavMeshPath path = new NavMeshPath();
+        Vector3 start = center;
+        Vector3 end = position;
+
+        MovableUnit movable = units[0] as MovableUnit;
+        int areaMask = movable.movementComponent.GetAreaMask();
+        System.Action groupMovementAction = () =>
+        {
+            if (GridGeneration.CalculatePath(start, end, areaMask, ref path))
+            {
+                for (int j = 0; j < totalUnits; j++)
+                {
+                    Unit unit = units[j];
+                    MovableUnit movableUnit = (MovableUnit)unit;
+                    if (StatComponent.IsUnitAliveOrValid(movableUnit))
+                    {
+                        if (movableUnit.movementComponent.GetPathfindingStatus() == PathfindingStatus.CalledForCancellingOfPathfinding)
+                        {
+                            movableUnit.movementComponent.SetPathfindingStatus(PathfindingStatus.NoPathfindingCalled);
+                            continue;
+                        }
+
+                        List<Vector3> newPath = new List<Vector3>();
+                        for (int i = 1; i < path.corners.Length; i++)
+                        {
+                            var prev = path.corners[i - 1];
+                            var next = path.corners[i];
+                            Quaternion rotation = Quaternion.LookRotation((prev - next).normalized, Vector3.up);
+                            int assignedIndex = assignment[j];
+                            Vector3 offset = rotation * formationOffsets[assignedIndex];
+                            RaycastHit? hit = SelectionController.FindProperHit(position, areaMask);
+                            var pos = next + offset;
+                            pos = hit == null ? pos : hit.Value.point;
+                            DebugExtension.DebugWireSphere(pos, Color.magenta, 0.1f, 2);
+                            newPath.Add(next + offset);
+                        }
+                        movableUnit.movementComponent.SetPositionData(newPath);
+                    }
+                }
+            }
+        };
+        PathfindingManager.Instance.RequestPathfinding(movable.movementComponent, groupMovementAction, 0);
+        return;
 
         // 4. Issue move commands
         Vector3 startPathfindingPostion = units[0].transform.position;

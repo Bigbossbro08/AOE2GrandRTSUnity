@@ -19,21 +19,21 @@ public class TestCoroutine : MonoBehaviour
         System.Action CleanUp = () => { };
         try
         {
-            var playerPositions = new List<Vector3>()
+            var PlayerSpawnDatas = new List<(Vector3, float)>
             {
-                new Vector3(127.45f, 0f, 99.6f),
-                new Vector3(127.45f, 0f, 97.517f),
-                new Vector3(127.45f, 0f, 98.54f),
-                new Vector3(127.45f, 0f, 98.03f),
-                new Vector3(127.45f, 0f, 99.11f),
-                new Vector3(127.45f, 0f, 99.6f),
-                new Vector3(127.55f, 0f, 97.517f),
-                new Vector3(127.55f, 0f, 98.54f),
+                new (new Vector3(51.78801f, 0.2630772f, 32.487f),       68.44099f),
+                new (new Vector3(52.28202f, 0.1759691f, 32.682f),       68.44099f),
+                new (new Vector3(51.94801f, 0.255607f, 32.083f),        68.44099f),
+                new (new Vector3(52.44202f, 0.1684988f, 32.27801f),     68.44099f),
+                new (new Vector3(51.608f, 0.2713701f, 32.944f),         68.44099f),
+                new (new Vector3(52.10201f, 0.1842639f, 33.139f),       68.44099f),
+                new (new Vector3(52.111f, 0.2480164f, 31.67101f),       68.44099f),
+                new (new Vector3(52.60501f, 0.1609079f, 31.86601f),     68.44099f),
             };
 
             List<MovableUnit> playerUnits = new();
             // Spawn player units
-            foreach (var pos in playerPositions)
+            foreach (var (pos, angle) in PlayerSpawnDatas)
             {
                 System.Action<Unit> PreSpawnAction = (unit) =>
                 {
@@ -41,7 +41,7 @@ public class TestCoroutine : MonoBehaviour
                     movableUnit.unitDataName = "military_units\\Rodelero";
                     movableUnit.playerId = 1;
                     movableUnit.transform.position = pos;
-                    movableUnit.transform.eulerAngles = new Vector3(0, 0, 0);
+                    movableUnit.transform.eulerAngles = new Vector3(0, angle, 0);
 
                     CleanUp += () =>
                     {
@@ -49,13 +49,15 @@ public class TestCoroutine : MonoBehaviour
                     };
                 };
                 var playerUnit = UnitManager.Instance.GetMovableUnitFromPool(PreSpawnAction);
+                playerUnit.statComponent.SetHealth(200, playerUnit, 200);
                 playerUnits.Add(playerUnit);
             }
 
             MovableUnit playerShip = null;
             {
                 // Spawn ship
-                Vector3 pos = new Vector3(132.1f, 0f, 97.517f);
+                Vector3 pos = new Vector3(54.387f, -3.699065E-06f, 31.019f);
+                float angle = 346.5634f;
 
                 System.Action<Unit> PreSpawnAction = (unit) =>
                 {
@@ -63,7 +65,7 @@ public class TestCoroutine : MonoBehaviour
                     movableUnit.unitDataName = "ship_units\\TestShip";
                     movableUnit.playerId = 1;
                     movableUnit.transform.position = pos;
-                    movableUnit.transform.eulerAngles = new Vector3(0, 0, 0);
+                    movableUnit.transform.eulerAngles = new Vector3(0, angle, 0);
 
                     CleanUp += () =>
                     {
@@ -72,18 +74,20 @@ public class TestCoroutine : MonoBehaviour
                 };
                 playerShip = UnitManager.Instance.GetMovableUnitFromPool(PreSpawnAction);
             }
-
             List<MovableUnit> enemyUnits = new();
-            var enemyPositions = new List<Vector3> {
-                new(128.49f, 0f, 110.85f),
-                new(128.49f, 0f, 110.36f),
-                new(128.49f, 0f, 108.767f),
-                new(128.49f, 0f, 109.28f),
-                new(128.49f, 0f, 109.79f),
+            var enemyPositions = new List<(Vector3, float)> {
+                new (new Vector3(79.547f, 0.2167008f, 56.25601f), 238.6242f),
+                new (new Vector3(79.363f, 0.2167008f, 56.557f), 238.6242f),
+                new (new Vector3(79.82101f, 0.2095419f, 55.805f), 238.6242f),
+                new (new Vector3(79.151f, 0.2167008f, 56.903f), 238.6242f),
+                new (new Vector3(78.62701f, 0.1178082f, 56.58301f), 238.6242f),
+                new (new Vector3(78.85401f, 0.1119432f, 56.21001f), 238.6242f),
+                new (new Vector3(79.05301f, 0.1069054f, 55.884f), 238.6242f),
+                new (new Vector3(79.23701f, 0.1021865f, 55.58201f), 238.6242f),
             };
 
             // Spawn units
-            foreach (var pos in enemyPositions)
+            foreach (var (pos, angle) in enemyPositions)
             {
                 System.Action<Unit> PreSpawnAction = (unit) =>
                 {
@@ -91,7 +95,7 @@ public class TestCoroutine : MonoBehaviour
                     movableUnit.unitDataName = "military_units\\Rodelero";
                     movableUnit.playerId = 2;
                     movableUnit.transform.position = pos;
-                    movableUnit.transform.eulerAngles = new Vector3(0, 0, 0);
+                    movableUnit.transform.eulerAngles = new Vector3(0, angle, 0);
 
                     CleanUp += () =>
                     {
@@ -105,15 +109,15 @@ public class TestCoroutine : MonoBehaviour
             MovableUnit enemy_ship = null;
             {
                 // Spawn ship
-                Vector3 pos = new Vector3(132.1f, 0f, 109.48f);
-
+                Vector3 pos = new Vector3(78.03f, -6.5943E-06f, 55.335f);
+                float angle = 322.5246f;
                 System.Action<Unit> PreSpawnAction = (unit) =>
                 {
                     MovableUnit movableUnit = unit as MovableUnit;
                     movableUnit.unitDataName = "ship_units\\TestShip";
                     movableUnit.playerId = 2;
                     movableUnit.transform.position = pos;
-                    movableUnit.transform.eulerAngles = new Vector3(0, 0, 0);
+                    movableUnit.transform.eulerAngles = new Vector3(0, angle, 0);
 
                     CleanUp += () =>
                     {
@@ -178,7 +182,7 @@ public class TestCoroutine : MonoBehaviour
             }
 
             {
-                Vector3 newCopiedPosition_0 = new Vector3(136.63f, 0f, 109.38f);
+                Vector3 newCopiedPosition_0 = new Vector3(69.9f, -3.699065E-06f, 39.59f);
 
                 MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
                 moveUnitsCommand.action = MoveUnitsCommand.commandName;

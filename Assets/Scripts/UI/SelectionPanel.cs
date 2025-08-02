@@ -15,39 +15,62 @@ public class SelectionPanel : MonoBehaviour
     private List<Unit> selectedUnits = new List<Unit>();
     private List<MovableUnit> movableUnits = new List<MovableUnit>();
 
+    [SerializeField] private Material circleMaterial;
+
+    private Mesh circleQuadMesh;
+
+    public Mesh GetCircleQuadMesh()
+    {
+        Mesh quad = new Mesh();
+        quad.vertices = new Vector3[]
+        {
+            new Vector3(-0.5f, 0, -0.5f),
+            new Vector3(0.5f, 0, -0.5f),
+            new Vector3(0.5f, 0, 0.5f),
+            new Vector3(-0.5f, 0, 0.5f),
+        };
+        quad.uv = new Vector2[]
+        {
+            new Vector2(0, 0),
+            new Vector2(1, 0),
+            new Vector2(1, 1),
+            new Vector2(0, 1),
+        };
+        quad.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
+        quad.RecalculateNormals();
+
+        return quad;
+    }
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         InitializeSelectionButtons();
         UpdateGridLayout();
+        circleQuadMesh = GetCircleQuadMesh();
     }
 
-    //void OnPostRender()
-    //{
-    //    hpMaterial.SetPass(0);
-    //    GL.Begin(GL.QUADS);
-    //
-    //    foreach (var unit in movableUnits)
-    //    {
-    //        Vector3 screenPos = Camera.main.WorldToScreenPoint(unit.transform.position + Vector3.up * 2);
-    //        float hpRatio = unit.statComponent.GetHealth() / (float)unit.statComponent.GetMaxHealth();
-    //
-    //        float width = 50;
-    //        float height = 5;
-    //
-    //        float left = screenPos.x - width / 2;
-    //        float right = left + width * hpRatio;
-    //        float top = screenPos.y;
-    //        float bottom = top - height;
-    //
-    //        GL.Vertex3(left, bottom, 0);
-    //        GL.Vertex3(right, bottom, 0);
-    //        GL.Vertex3(right, top, 0);
-    //        GL.Vertex3(left, top, 0);
-    //    }
-    //
-    //    GL.End();
-    //}
+    public float circleSize = 2f;
+    public float height = 0.01f;
+
+    void OnPreRender()
+    {
+        if (circleMaterial == null || selectedUnits == null) return;
+        if (selectedUnits.Count == 0) return;
+        circleMaterial.SetPass(0); // Use the material for this draw call
+        foreach (var unit in selectedUnits)
+        {
+            if (unit == null) continue;
+
+            Matrix4x4 matrix = Matrix4x4.TRS(
+                unit.transform.position + Vector3.up * height, // Slightly above ground
+                Quaternion.Euler(0f, 0f, 0f),      // Face upward
+                Vector3.one * circleSize
+            );
+
+            Graphics.DrawMeshNow(circleQuadMesh, matrix);
+        }
+    }
 
     void InitializeSelectionButtons()
     {

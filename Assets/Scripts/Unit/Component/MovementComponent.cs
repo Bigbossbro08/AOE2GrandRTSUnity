@@ -90,6 +90,9 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     private PathfindingStatus pathfindingStatus = PathfindingStatus.NoPathfindingCalled;
 
+    public PathfindingStatus GetPathfindingStatus() => pathfindingStatus;
+    public void SetPathfindingStatus(PathfindingStatus newStatus) => pathfindingStatus = newStatus;
+
     public System.Action<State> OnMovementStateChangeCallback = (state) => { };
     public System.Action OnMoving = () => { };
 
@@ -269,14 +272,14 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         }
 
         // 2. Adjust height via raycast if needed
-        float targetY = positions[0].y;
-        if (UseRaycastHeight())
-        {
-            if (TryGetGroundHeight(nextPos2D, positions[0].y, out float groundY))
-            {
-                targetY = groundY;
-            }
-        }
+        //float targetY = positions[0].y;
+        //if (UseRaycastHeight())
+        //{
+        //    if (TryGetGroundHeight(nextPos2D, positions[0].y, out float groundY))
+        //    {
+        //        targetY = groundY;
+        //    }
+        //}
 
         // 3. Apply boids avoidance if enabled
         if (ShouldApplyBoids())
@@ -290,9 +293,17 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
             }
         }
 
+        float targetY = transform.position.y;
+        if (TryGetGroundHeight(nextPos2D, targetY, out float groundY))
+        {
+            targetY = groundY;
+        }
+
         // 4. Finalize position using NavMesh sampling
         var finalPos = SampleNavMesh(nextPos2D, targetY);
+        //Debug.DrawLine(transform.position, new Vector3(transform.position.x, targetY, transform.position.z), Color.yellow);
         transform.localPosition = finalPos;
+        transform.position = new Vector3(transform.position.x, targetY, transform.position.z);
     }
 
     public static bool CapsuleCastMatchesCollider(
@@ -430,9 +441,12 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         if (u.GetType() == typeof(MovableUnit))
         {
             MovableUnit movableUnit = (MovableUnit)u;
-            if (movableUnit != null && movableUnit.movementComponent.crowdID == crowdID)
+            if (movableUnit != null)
             {
-                return true;
+                if (movableUnit.movementComponent.crowdID == crowdID)
+                {
+                    return true;
+                }
             }
         }
         return idsToIgnore.Contains(u.id);
@@ -601,6 +615,10 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         {
             return true;
         }
+        if (transform.parent && transform.parent.CompareTag("Ship Unit"))
+        {
+            return true;
+        }
         return false;
     }
 
@@ -647,7 +665,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         }
     }
 
-    int GetAreaMask()
+    public int GetAreaMask()
     {
         int areaMask = 1;
         bool isWater = HasState(MovementFlag.IsWater);

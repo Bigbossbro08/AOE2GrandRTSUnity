@@ -21,18 +21,24 @@ Shader "Custom/PlayerColorTest"
         }
         //ZWrite On
         //ZTest LEqual
-
+        
+        Tags { "RenderType"="Transparent" "Queue"="Transparent" }
+        LOD 100
+        Blend SrcAlpha OneMinusSrcAlpha
+        Cull Off
+        Lighting Off
+        ZWrite Off
         Pass
         {
             Name "PlayerColorPass"
             Tags { "LightMode"="UniversalForward" }
 
-            Blend SrcAlpha OneMinusSrcAlpha
+            //Blend SrcAlpha OneMinusSrcAlpha
             //ZWrite Off
-            Cull Off
+            //Cull Off
             
             ZTest Always
-            ZWrite Off
+            //ZWrite Off
 
             HLSLPROGRAM
             #pragma vertex vert

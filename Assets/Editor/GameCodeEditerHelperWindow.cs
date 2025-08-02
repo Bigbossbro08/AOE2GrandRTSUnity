@@ -35,6 +35,17 @@ public class MissionCollisionTriggerCheckerEditorWindow : EditorWindow
         }
         else
         {
+            if (GUILayout.Button("Use raycast to ground"))
+            {
+                foreach (var o in Selection.gameObjects)
+                {
+                    Ray ray = new Ray(o.transform.position, Vector3.down);
+                    if (Physics.Raycast(ray, out RaycastHit hit, 1000, 1))
+                    {
+                        o.transform.position = hit.point;
+                    }
+                }
+            }
             //for (int i = 0; i < Selection.gameObjects.Length; i++)
             //{
             //    GameObject go = Selection.gameObjects[i];

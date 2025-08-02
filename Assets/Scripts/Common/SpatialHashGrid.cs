@@ -28,15 +28,20 @@ public class SpatialHashGrid : MonoBehaviour {
         grid[cell].Add(unit);
     }
 
-    public void Unregister(Unit unit)
+    public bool Unregister(Unit unit)
     {
-        //Vector2Int cell = GetCell(Camera.main.WorldToScreenPoint(unit.transform.position));
+        bool removedSuccessfully = false;
         Vector2Int cell = GetCell(unit.transform.position);
         if (grid.ContainsKey(cell))
         {
             grid[cell].Remove(unit);
-            if (grid[cell].Count == 0) grid.Remove(cell); // Remove empty cells
+            removedSuccessfully = true;
+            if (grid[cell].Count == 0)
+            {
+                grid.Remove(cell); // Remove empty cells
+            }
         }
+        return removedSuccessfully;
     }
 
     public void UpdateUnit(Unit unit, Vector2Int oldCell)

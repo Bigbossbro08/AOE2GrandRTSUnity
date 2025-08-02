@@ -439,6 +439,10 @@ public class UnitManager : MonoBehaviour
     private void _ReleaseMovableUnitfromPool(MovableUnit unit)
     {
         unit.OnRelease?.Invoke(unit.id);
+
+        unit.UpdateGridCell();
+
+        UnitManager.Instance.spatialHashGrid.Unregister(unit);
         unit.transform.SetParent(null, true);
 
         if (unit.IsShip())
@@ -453,6 +457,7 @@ public class UnitManager : MonoBehaviour
                 }
                 unit.shipData.unitsOnShip.Clear();
             }
+            unit.shipData.Deinitialize(unit.transform, unit._rigidbody);
         }
 
         if (units.ContainsKey(unit.id))

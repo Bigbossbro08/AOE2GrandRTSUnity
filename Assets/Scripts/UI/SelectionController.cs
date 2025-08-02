@@ -104,10 +104,22 @@ public class SelectionController : MonoBehaviour
             if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 20f, navAreaMask))
             {
                 ray = new Ray(navHit.position + Vector3.up * 100, Vector3.down * 200);
-                if (Physics.Raycast(ray, out hit, float.MaxValue, layer))
+                RaycastHit[] hits = Physics.RaycastAll(ray, float.MaxValue, layer);
+                foreach (var h in hits)
                 {
-                    return hit;
+                    if (h.collider.TryGetComponent(out MovableUnit movableUnit))
+                    {
+                        if (!movableUnit.IsShip())
+                        {
+                            continue;
+                        }
+                        return h;
+                    }
                 }
+                //if (Physics.Raycast(ray, out hit, float.MaxValue, layer))
+                //{
+                //    return hit;
+                //}
             }
         }
         return null;
@@ -288,9 +300,14 @@ public class SelectionController : MonoBehaviour
                 if (obj != null && obj.TryGetComponent(out MovableUnit unit))
                 {
                     if (!unit.IsSelectable()) continue;
-                    //var icon = unit.GetSpriteIcon();
                     selectedUnits.Add(unit);
-                    //Debug.Log("Selected unit:" + obj.gameObject.name);
+                }
+
+                obj = FindParentByTag(hit.transform, shipUnitTag);
+                if (obj != null && obj.TryGetComponent(out unit))
+                {
+                    if (!unit.IsSelectable()) continue;
+                    selectedUnits.Add(unit);
                 }
             }
         }

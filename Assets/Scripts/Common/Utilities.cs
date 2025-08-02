@@ -114,6 +114,33 @@ public static class Utilities
         }
     }
 
+    public static Vector3 GetClosestPointOnPath(Vector3 target, List<Vector3> pathPoints)
+    {
+        Vector3 closestPoint = pathPoints[0];
+        float minDistanceSqr = float.MaxValue;
+
+        for (int i = 0; i < pathPoints.Count - 1; i++)
+        {
+            Vector3 a = pathPoints[i];
+            Vector3 b = pathPoints[i + 1];
+
+            // Project target onto segment [a, b]
+            Vector3 ab = b - a;
+            float t = Vector3.Dot(target - a, ab) / ab.sqrMagnitude;
+            t = Mathf.Clamp01(t);
+            Vector3 projected = a + t * ab;
+
+            float distSqr = (target - projected).sqrMagnitude;
+            if (distSqr < minDistanceSqr)
+            {
+                minDistanceSqr = distSqr;
+                closestPoint = projected;
+            }
+        }
+
+        return closestPoint;
+    }
+
     // Converts to a Vector3 to Vector2(x,z)
     public static Vector2 ToVector2XZ(Vector3 v) => new Vector2(v.x, v.z);
 

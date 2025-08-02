@@ -369,6 +369,26 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             }
         }
 
+        public void SetupDockedNavigation(bool dockAgainstShip)
+        {
+            int navArea = 0;// dockAgainstShip ? 4 : 0;
+            if (dockAgainstShip)
+            {
+                navMeshSurface.enabled = false;
+            }
+            else
+            {
+                IEnumerator<IDeterministicYieldInstruction> DelayedLinkUpdate()
+                {
+                    yield return new DeterministicWaitForSeconds(0);
+                    SetupNavLinkToShore(navArea);
+                }
+                SetupNavLinkToShore(navArea);
+                DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(DelayedLinkUpdate());
+                navMeshSurface.enabled = true;
+            }
+        }
+
         public void SetDockedMode(bool docked, bool dockAgainstShip = false)
         {
             if (!isShipMode) return;
@@ -378,17 +398,10 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             if (docked)
             {
                 movableUnit.movementComponent.Stop();
-                int navArea = dockAgainstShip ? 4 : 0;
+                int navArea = 0;// dockAgainstShip ? 4 : 0;
                 navMeshSurface.defaultArea = navArea;
                 navMeshSurface.BuildNavMesh();
-                IEnumerator<IDeterministicYieldInstruction> DelayedLinkUpdate()
-                {
-                    yield return new DeterministicWaitForSeconds(0);
-                    SetupNavLinkToShore(navArea);
-                }
-                SetupNavLinkToShore(navArea);
-                DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(DelayedLinkUpdate());
-
+                SetupDockedNavigation(dockAgainstShip);
                 isDocked = true;
 
                 foreach (var unit in unitsOnShip)
@@ -410,10 +423,6 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                     unit.movementComponent.Stop();
                     unit.movementComponent.rb.isKinematic = false;
                 }
-                //if (!dockAgainstShip)
-                //{
-                //    
-                //}
                 UnitManager.UnitJsonData.Prop propData = UnitManager.Instance.LoadPropJsonData(dockedPropName);
                 if (propData != null)
                 {
@@ -435,6 +444,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             {
                 RemoveBoardedShipHandler();
                 navMeshObstacle.enabled = false;
+                navMeshSurface.enabled = true;
                 navMeshSurface.defaultArea = 4; // On ship surface
                 navMeshSurface.BuildNavMesh();
                 foreach (var navLink in navMeshLinks)
@@ -473,6 +483,13 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
         void RemoveBoardedShipHandler()
         {
+            if (targetBoardedShip)
+            {
+                var tempBoardedShip = targetBoardedShip;
+                targetBoardedShip = null;
+                tempBoardedShip.shipData.SetDockedMode(false);
+            }
+
             if (boardedShipHandler)
             {
                 BoardedShipHandler tempBoardedShipHandler = boardedShipHandler;
@@ -788,6 +805,10 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     public bool IsShip()
     {
+        if (transform.CompareTag("Ship Unit"))
+        {
+            return true;
+        }
         return shipData != null && shipData.isShipMode;
     }
 
@@ -813,24 +834,24 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     void LoadMovableData(string unitDataName, bool callVisualUpdate = false)
     {
-        UnitManager.UnitJsonData militaryUnit = UnitManager.Instance.LoadUnitJsonData(unitDataName);
-        if (militaryUnit == null)
+        UnitManager.UnitJsonData movableUnitData = UnitManager.Instance.LoadUnitJsonData(unitDataName);
+        if (movableUnitData == null)
         {
             NativeLogger.Error($"Failed to load unit from data {unitDataName}");
             return;
         }
         gameObject.tag = "Military Unit";
 
-        if (militaryUnit.rotation_speed.HasValue)
+        if (movableUnitData.rotation_speed.HasValue)
         {
-            movementComponent.rotationSpeed = militaryUnit.rotation_speed.Value;
+            movementComponent.rotationSpeed = movableUnitData.rotation_speed.Value;
         }
         else
         {
             movementComponent.rotationSpeed = 360.0f;
         }
 
-        if (militaryUnit.use_steering.HasValue && militaryUnit.use_steering.Value == true)
+        if (movableUnitData.use_steering.HasValue && movableUnitData.use_steering.Value == true)
         {
             movementComponent.SetState(MovementComponent.MovementFlag.UseSteering);
         }
@@ -839,14 +860,14 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             movementComponent.RemoveState(MovementComponent.MovementFlag.UseSteering);
         }
 
-        statComponent.SetHealth(militaryUnit.hp);
-        standSprite = militaryUnit.standing;
-        walkSprite = militaryUnit.walking;
+        statComponent.SetHealth(movableUnitData.hp);
+        standSprite = movableUnitData.standing;
+        walkSprite = movableUnitData.walking;
 
-        if (militaryUnit.collisionData != null && !string.IsNullOrEmpty(militaryUnit.collisionData.name))
+        if (movableUnitData.collisionData != null && !string.IsNullOrEmpty(movableUnitData.collisionData.name))
         {
-            AssimpMeshLoader.MeshReturnData meshReturnData = AssimpMeshLoader.Instance.LoadMeshFromAssimp(militaryUnit.collisionData.name);
-            float size = militaryUnit.collisionData.size == null ? 1 : militaryUnit.collisionData.size.Value;
+            AssimpMeshLoader.MeshReturnData meshReturnData = AssimpMeshLoader.Instance.LoadMeshFromAssimp(movableUnitData.collisionData.name);
+            float size = movableUnitData.collisionData.size == null ? 1 : movableUnitData.collisionData.size.Value;
             UnityEngine.Mesh mesh = AssimpMeshLoader.ScaleMesh(meshReturnData.mesh, size);
             meshCollider = gameObject.AddComponent<MeshCollider>();
             meshCollider.sharedMesh = mesh;
@@ -870,16 +891,18 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             movementComponent.solidCollider = capsuleCollider;
         }
 
-        if (militaryUnit.ship_data == null)
+        if (movableUnitData.ship_data == null)
         {
+            gameObject.tag = "Military Unit";
             shipData.Deinitialize(transform, _rigidbody);
         }
         else
         {
-            shipData.Initialize(militaryUnit, transform, _rigidbody, this);
+            gameObject.tag = "Ship Unit";
+            shipData.Initialize(movableUnitData, transform, _rigidbody, this);
         }
 
-        if (militaryUnit.lockedAngle == null)
+        if (movableUnitData.lockedAngle == null)
         {
             movementComponent.RemoveState(MovementComponent.MovementFlag.LockedRotation);
             movementComponent.directionCount = 8;
@@ -887,36 +910,36 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         else
         {
             movementComponent.SetState(MovementComponent.MovementFlag.LockedRotation);
-            movementComponent.directionCount = militaryUnit.lockedAngle.directionCount;
+            movementComponent.directionCount = movableUnitData.lockedAngle.directionCount;
         }
 
         if (movementComponent)
         {
-            movementComponent.movementSpeed = militaryUnit.movement_speed;
+            movementComponent.movementSpeed = movableUnitData.movement_speed;
         }
 
-        UnitManager.UnitJsonData.DamageData damageData = militaryUnit.damageData;
+        UnitManager.UnitJsonData.DamageData damageData = movableUnitData.damageData;
         if (statComponent)
         {
             statComponent.damageData = damageData;
-            statComponent.SetHealth(militaryUnit.hp);
+            statComponent.SetHealth(movableUnitData.hp);
         }
 
         CombatComponent combatComponent = unitTypeComponent as CombatComponent;
         if (combatComponent)
         {
-            combatComponent.attackSprite = militaryUnit.attacking;
-            combatComponent.attackRange = militaryUnit.attack_range == null ? 0.0f : militaryUnit.attack_range.Value;
-            combatComponent.attackDelay = militaryUnit.attack_delay;
+            combatComponent.attackSprite = movableUnitData.attacking;
+            combatComponent.attackRange = movableUnitData.attack_range == null ? 0.0f : movableUnitData.attack_range.Value;
+            combatComponent.attackDelay = movableUnitData.attack_delay;
             combatComponent.actionEvents.Clear();
-            combatComponent.projectile_offset = (Vector3?)militaryUnit.projectile_offset;
-            combatComponent.projectile_unit = militaryUnit.projectile_unit;
+            combatComponent.projectile_offset = (Vector3?)movableUnitData.projectile_offset;
+            combatComponent.projectile_unit = movableUnitData.projectile_unit;
 
-            if (militaryUnit.combatActionEvents != null)
+            if (movableUnitData.combatActionEvents != null)
             {
-                for (int i = 0; i < militaryUnit.combatActionEvents.Count; i++)
+                for (int i = 0; i < movableUnitData.combatActionEvents.Count; i++)
                 {
-                    UnitManager.UnitJsonData.CombatActionEvent eventData = militaryUnit.combatActionEvents[i];
+                    UnitManager.UnitJsonData.CombatActionEvent eventData = movableUnitData.combatActionEvents[i];
                     if (System.Enum.TryParse(eventData.eventType, out UnitEventHandler.EventID eventID))
                     {
                         switch (eventID)
@@ -1021,15 +1044,11 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         DeterministicUpdateManager.Instance.Register(this);
         if (movementComponent)
         {
-            movementComponent.OnMovementStateChangeCallback += MovementComponent_OnMovementStateChange;
+            movementComponent.OnMovementStateChangeCallback -= MovementComponent_OnMovementStateChange;
             movementComponent.OnMoving -= MovementComponent_OnMoving;
         }
 
         //transform.SetParent(null, true);
-
-        UpdateGridCell();
-
-        UnitManager.Instance.spatialHashGrid.Unregister(this);
     }
 
     private void MovementComponent_OnMoving()
