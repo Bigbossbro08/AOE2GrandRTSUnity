@@ -30,7 +30,7 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
     {
         if (newState == State.ReachedDestination && !force)
         {
-            self.ResetToDefaultModule();
+            //self.ResetToDefaultModule();
 
             enabled = false;
         }
@@ -127,7 +127,7 @@ public class BasicMovementAIModule : UnitAIModule, IDeterministicUpdate, MapLoad
                 break;
             case State.ReachedDestination:
                 {
-                    self.ResetToDefaultModule();
+                    //self.ResetToDefaultModule();
                     enabled = false;
                 }
                 break;

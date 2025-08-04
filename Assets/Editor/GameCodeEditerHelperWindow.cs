@@ -74,6 +74,21 @@ public class MissionCollisionTriggerCheckerEditorWindow : EditorWindow
                 }
                 StoreCommand(code.ToString(), "Merged Codes");
             }
+            if (GUILayout.Button("New Position Rotation Copy Command"))
+            {
+                StringBuilder code = new();
+                code.AppendLine($@"List<(Vector3, float)> copyPosRot = new()");
+                code.Append(" {");
+                for (int i = 0; i < Selection.gameObjects.Length; i++)
+                {
+                    GameObject go = Selection.gameObjects[i];
+                    Transform t = go.transform;
+                    string line = $"new (new Vector3({V3(t.position)}), {t.eulerAngles.y}f),";
+                    code.AppendLine(line);
+                }
+                code.AppendLine("};");
+                StoreCommand(code.ToString(), "Merged Codes");
+            }
             //for (int i = 0; i < Selection.gameObjects.Length; i++)
             //{
             //    GameObject go = Selection.gameObjects[i];

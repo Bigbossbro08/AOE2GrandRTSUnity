@@ -19,6 +19,18 @@ public class TestCoroutine : MonoBehaviour
         System.Action CleanUp = () => { };
         try
         {
+            List<(Vector3, float)> newEnemyPos = new()
+            {
+                new (new Vector3(44.04001f, 1.53375f, 31.58001f), 68.44099f),
+                new (new Vector3(44.53402f, 1.446641f, 31.775f), 68.44099f),
+                new (new Vector3(44.20001f, 1.52628f, 31.17601f), 68.44099f),
+                new (new Vector3(44.69402f, 1.439171f, 31.37102f), 68.44099f),
+                new (new Vector3(43.86f, 1.542044f, 32.03701f), 68.44099f),
+                new (new Vector3(44.35402f, 1.454935f, 32.23202f), 68.44099f),
+                new (new Vector3(44.36301f, 1.518688f, 30.76402f), 68.44099f),
+                new (new Vector3(44.85701f, 1.431581f, 30.95902f), 68.44099f),
+            };
+
             var PlayerSpawnDatas = new List<(Vector3, float)>
             {
                 new (new Vector3(51.78801f, 0.2630772f, 32.487f),       68.44099f),
@@ -86,14 +98,13 @@ public class TestCoroutine : MonoBehaviour
                 new (new Vector3(79.23701f, 0.1021865f, 55.58201f), 238.6242f),
             };
 
-            // Spawn units
-            foreach (var (pos, angle) in enemyPositions)
+            void SpawnNPC(Vector3 pos, float angle, ulong playerId, List<MovableUnit> refList)
             {
                 System.Action<Unit> PreSpawnAction = (unit) =>
                 {
                     MovableUnit movableUnit = unit as MovableUnit;
                     movableUnit.unitDataName = "military_units\\Rodelero";
-                    movableUnit.playerId = 2;
+                    movableUnit.playerId = playerId;
                     movableUnit.transform.position = pos;
                     movableUnit.transform.eulerAngles = new Vector3(0, angle, 0);
 
@@ -103,7 +114,24 @@ public class TestCoroutine : MonoBehaviour
                     };
                 };
                 var npc = UnitManager.Instance.GetMovableUnitFromPool(PreSpawnAction);
-                enemyUnits.Add(npc);
+                if (refList != null)
+                {
+                    refList.Add(npc);
+                }
+            }
+
+            // Spawn units
+            foreach (var (pos, angle) in enemyPositions)
+            {
+                //SpawnNPC(pos, angle, 2, enemyUnits);
+            }
+
+            // Spawn units
+            foreach (var (pos, angle) in newEnemyPos)
+            {
+                Vector3 newPos = pos;
+                newPos.y += 0.1f;
+                SpawnNPC(newPos, angle, 2, null);
             }
 
             MovableUnit enemy_ship = null;

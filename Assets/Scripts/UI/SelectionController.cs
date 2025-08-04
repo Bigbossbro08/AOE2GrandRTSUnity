@@ -84,7 +84,7 @@ public class SelectionController : MonoBehaviour
     public static NavMeshHit? FindProperNavHit(Vector3 targetPosition, int areaMask)
     {
         int layer = ~(1 << 2 | 1 << 3 | 1 << 6);
-        Ray ray = new Ray(targetPosition + Vector3.up * 100, Vector3.down * 200);// Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray ray = new Ray(targetPosition + Vector3.up * 200, Vector3.down * 200);// Camera.main.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit, float.MaxValue, layer))
         {
             if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 20f, areaMask))
@@ -98,12 +98,12 @@ public class SelectionController : MonoBehaviour
     public static RaycastHit? FindProperHit(Vector3 targetPosition, int navAreaMask)
     {
         int layer = ~(1 << 2 | 1 << 3 | 1 << 6 | 1 << 30);
-        Ray ray = new Ray(targetPosition + Vector3.up * 100, Vector3.down * 200);// Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray ray = new Ray(targetPosition + Vector3.up * 200, Vector3.down * 400);// Camera.main.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit, float.MaxValue, layer))
         {
             if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 20f, navAreaMask))
             {
-                ray = new Ray(navHit.position + Vector3.up * 100, Vector3.down * 200);
+                ray = new Ray(navHit.position + Vector3.up * 200, Vector3.down * 400);
                 RaycastHit[] hits = Physics.RaycastAll(ray, float.MaxValue, layer);
                 foreach (var h in hits)
                 {
@@ -113,8 +113,8 @@ public class SelectionController : MonoBehaviour
                         {
                             continue;
                         }
-                        return h;
                     }
+                    return h;
                 }
                 //if (Physics.Raycast(ray, out hit, float.MaxValue, layer))
                 //{

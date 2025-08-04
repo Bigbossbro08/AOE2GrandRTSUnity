@@ -7,6 +7,49 @@ using System.Linq;
 
 public class ShipTests : BasePlayModeTest
 {
+    /*
+    [UnityTest]
+    public IEnumerator TestSingleBoardShipToShore()
+    {
+        yield return LoadGameScene();
+
+        GameManager.Instance.CameraHandler.transform.position = TestTriggerPos;
+
+        // spawn & init
+        var unit = SpawnUnit(DefaultSpawnPos, DefaultEuler, u => u.playerId = 1);
+
+        // create the trigger
+        int hits = 0;
+
+        var trigger = CreateTriggerBox(TestTriggerPos, Quaternion.identity, Vector3.one, Vector3.one, Vector3.zero,
+            null, (c) => {
+                if (c.CompareTag("Military Unit"))
+                    hits++;
+            },
+            null);
+
+        // issue move command
+        InputManager.Instance.SendInputCommand(
+          new MoveUnitsCommand
+          {
+              action = MoveUnitsCommand.commandName,
+              unitIDs = new List<ulong> { unit.id },
+              position = TestTriggerPos,
+              IsAttackMove = false
+          });
+
+        // wait for it to enter
+        yield return WaitForCondition(() =>
+        {
+            return hits == 1 && unit.movementComponent.GetPathPositions().Count == 0 &&
+                unit.movementComponent.movementState == MovementComponent.State.Idle;
+        }, 30);
+
+        // optional: verify final state
+        Assert.That(unit.movementComponent.movementState,
+                    Is.EqualTo(MovementComponent.State.Idle));
+    }
+    */
     [UnityTest]
     public IEnumerator TestShipToShipCombat()
     {

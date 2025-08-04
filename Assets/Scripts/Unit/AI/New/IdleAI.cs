@@ -1,22 +1,20 @@
 using CoreGameUnitAI;
 using UnityEngine;
 
+[System.Serializable]
 public class IdleAI : IAIController
 {
-    UnitAIController contrller;
+    UnitAIController controller;
     SearchForEnemy searchForEnemy = null;
 
-    public IdleAI(UnitAIController controller, float? lineOfSight) {
-        this.contrller = controller;
-        if (lineOfSight.HasValue)
-        {
-            searchForEnemy = new SearchForEnemy(contrller.context.self, lineOfSight.Value, 0.5f); // TODO: Add a data entry in unit datas
-        }
+    public IdleAI(UnitAIController controller) {
+        this.controller = controller;
     }
 
     public void Enter()
     {
-        contrller.context.self.ResetUnit();
+        searchForEnemy = new SearchForEnemy(this.controller.context.self, this.controller.context.combatComponent.lineOfSight, 0.5f);
+        controller.context.self.ResetUnit();
     }
 
     public void Exit()
@@ -28,11 +26,16 @@ public class IdleAI : IAIController
     {
         if (searchForEnemy != null)
         {
+            bool checkForTimeout = searchForEnemy.TimedOut;
             if (searchForEnemy.Update(dt, out MovableUnit enemyUnit))
             {
                 // Go To Combat State
-                contrller.SetAI(new AttackAI(contrller, enemyUnit));
+                controller.SetAI(new AttackAI(controller, enemyUnit));
+                return;
             }
-        } 
+
+            if (checkForTimeout && enemyUnit == null)
+                controller.RevertToPreviousAI();
+        }
     }
 }

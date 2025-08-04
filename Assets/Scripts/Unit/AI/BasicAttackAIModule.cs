@@ -162,7 +162,7 @@ public class BasicAttackAIModule : UnitAIModule, IDeterministicUpdate, MapLoader
                 }
                 else
                 {
-                    self.ResetToDefaultModule();
+                    //self.ResetToDefaultModule();
                 }
             }
         }

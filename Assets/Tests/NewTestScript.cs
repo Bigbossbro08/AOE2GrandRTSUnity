@@ -201,8 +201,9 @@ public class NewTestScript
 
         System.Action CleanUp = () => { };
 
-        List<MovableUnit> copyCommandUnits = new();
-        Vector3 newCopiedPosition_0 = new Vector3(126.99f, 0f, 95.72f);
+        List<MovableUnit> copyCommandUnits = new(); 
+
+        Vector3 newCopiedPosition_0 = new Vector3(102.14f, 2.742795f, 98.78004f);
         Vector3 newCopiedEulerAngles_0 = new Vector3(0f, 0f, 0f);
 
         MovableUnit movableUnit_0 = UnitManager.Instance.GetMovableUnitFromPool();
@@ -251,7 +252,7 @@ public class NewTestScript
         };
 
         bool attackMove = false;
-        Vector3 hitPoint = new Vector3(114.44f, 0.0341f, 98.06f);
+        Vector3 hitPoint = new Vector3(99.53003f, 2.742795f, 98.78004f);
         MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
         moveUnitsCommand.action = MoveUnitsCommand.commandName;
         moveUnitsCommand.unitIDs = new List<ulong>();
@@ -906,6 +907,39 @@ public class NewTestScript
         List<MovableUnit> units = new List<MovableUnit>();
 
         System.Action CleanUp = () => { };
+        {
+            Vector3 newCopiedPosition_0 = new Vector3(99.53003f, 2.742795f, 98.78004f);
+            Vector3 newCopiedEulerAngles_0 = new Vector3(0f, 0f, 0f);
+
+
+            Vector3 newCopiedPosition_1 = new Vector3(100.04f, 2.742795f, 98.78004f);
+            Vector3 newCopiedEulerAngles_1 = new Vector3(0f, 0f, 0f);
+
+
+            Vector3 newCopiedPosition_2 = new Vector3(99.53003f, 2.742794f, 99.68001f);
+            Vector3 newCopiedEulerAngles_2 = new Vector3(0f, 0f, 0f);
+
+
+            Vector3 newCopiedPosition_3 = new Vector3(100.04f, 2.742795f, 99.68001f);
+            Vector3 newCopiedEulerAngles_3 = new Vector3(0f, 0f, 0f);
+
+
+            Vector3 newCopiedPosition_4 = new Vector3(99.53003f, 2.742795f, 100.34f);
+            Vector3 newCopiedEulerAngles_4 = new Vector3(0f, 0f, 0f);
+
+
+            Vector3 newCopiedPosition_5 = new Vector3(100.04f, 2.742795f, 100.34f);
+            Vector3 newCopiedEulerAngles_5 = new Vector3(0f, 0f, 0f);
+
+
+            Vector3 newCopiedPosition_6 = new Vector3(99.53003f, 2.742795f, 100.99f);
+            Vector3 newCopiedEulerAngles_6 = new Vector3(0f, 0f, 0f);
+
+
+            Vector3 newCopiedPosition_7 = new Vector3(100.04f, 2.742795f, 100.99f);
+            Vector3 newCopiedEulerAngles_7 = new Vector3(0f, 0f, 0f);
+
+        }
 
         int playerOneUnitCounts = 0;
         int playerTwoUnitCounts = 0;

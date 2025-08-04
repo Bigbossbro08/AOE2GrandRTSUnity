@@ -1,9 +1,11 @@
+using CoreGameUnitAI;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.UIElements;
 using static MovementComponent;
 using static Utilities;
 
@@ -34,7 +36,8 @@ public class MoveUnitCommand : InputCommand
                 ulong newCrowdID = ++UnitManager.crowdIDCounter;
                 movableUnit.ResetUnit(true);
                 //movableUnit.movementComponent.StartPathfind(position);
-                movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID);
+                //movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID);
+                movableUnit.aiController.SetAI(new MoveToPositionAI(movableUnit.aiController, position, newCrowdID));
                 //movableUnit.movementComponent.crowdID = newCrowdID;
             }
         }
@@ -133,7 +136,15 @@ public class MoveUnitsCommand : InputCommand
                             DebugExtension.DebugWireSphere(pos, Color.magenta, 0.1f, 2);
                             newPath.Add(next + offset);
                         }
-                        movableUnit.movementComponent.SetPositionData(newPath);
+                        if (IsAttackMove)
+                        {
+                            movableUnit.aiController.SetAI(new AttackMoveAI(movableUnit.aiController, newPath, crowdID), false, true);
+                        }
+                        else
+                        {
+                            movableUnit.aiController.SetAI(new MoveToPositionAI(movableUnit.aiController, newPath, crowdID), false, true);
+                        }
+                        //movableUnit.movementComponent.SetPositionData(newPath);
                     }
                 }
             }
@@ -216,9 +227,18 @@ public class MoveUnitsCommand : InputCommand
                 movableUnit.shipData.SetDockedMode(false);
             }
 
-            movableUnit.SetAIModule(IsAttackMove ? UnitAIModule.AIModule.AttackMoveAIModule : UnitAIModule.AIModule.BasicMovementAIModule,
-                position, newCrowdID, offset, startPosition);
+            // TODO fix attack move
+            //movableUnit.SetAIModule(IsAttackMove ? UnitAIModule.AIModule.AttackMoveAIModule : UnitAIModule.AIModule.BasicMovementAIModule,
+            //    position, newCrowdID, offset, startPosition);
             //movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID);
+            if (IsAttackMove)
+            {
+                movableUnit.aiController.SetAI(new AttackMoveAI(movableUnit.aiController, position, newCrowdID), false, true);
+            }
+            else
+            {
+                movableUnit.aiController.SetAI(new MoveToPositionAI(movableUnit.aiController, position, newCrowdID), false, true);
+            }
         }
     }
 
@@ -376,8 +396,7 @@ public class DockShipUnitCommand : InputCommand
                 startPosition = unit.transform.position;
             }
 
-            movableUnit.SetAIModule(UnitAIModule.AIModule.DockToShoreUnitAIModule,
-                position, newCrowdID, offset, startPosition);
+            movableUnit.aiController.SetAI(new BoardToShoreAI(movableUnit.aiController, position, newCrowdID), false, true);
         }
     }
 
@@ -498,7 +517,7 @@ public class BoardToShipCommand : InputCommand
                     movableUnit.ResetUnit(true);
                     movableUnit.shipData.SetDockedMode(false);
                     ulong newCrowdID = ++UnitManager.crowdIDCounter;
-                    movableUnit.SetAIModule(UnitAIModule.AIModule.BoardshipUnitAIModule, targetShip, newCrowdID, Vector3.zero, true);
+                    movableUnit.aiController.SetAI(new BoardToShipAI(movableUnit.aiController, targetShip), false, true);
                 }
             }
         }
@@ -525,9 +544,8 @@ public class AttackUnitCommand : InputCommand
                 MovableUnit movableTargetUnit = (MovableUnit)targetUnit;
                 if (movableUnit.aiModule)
                 {
-                    movableUnit.ResetUnit(true);
                     ulong newCrowdID = ++UnitManager.crowdIDCounter;
-                    movableUnit.SetAIModule(UnitAIModule.AIModule.BasicAttackAIModule, movableTargetUnit, true, true);
+                    movableUnit.aiController.SetAI(new AttackAI(movableUnit.aiController, movableTargetUnit, true), false, true);
                 }
             }
         }

@@ -18,7 +18,7 @@ public class AttackMoveAIModule : BasicMovementAIModule
                     MovableUnit cachedSelf = self;
                     NativeLogger.Log($"FOUND ENEMY! and moving to attack against by {self.name} to {enemyUnit.name}");
                     self.ResetUnit(true);
-                    self.SetAIModule(UnitAIModule.AIModule.BasicAttackAIModule, enemyUnit, false, false);
+                    //self.SetAIModule(UnitAIModule.AIModule.BasicAttackAIModule, enemyUnit, false, false);
                     //cachedSelf.overrideModule = AIModule.AttackMoveAIModule;
                     //cachedSelf.overrideModuleArgs = new System.Collections.Generic.List<object> {
                     //    position, cachedSelf.movementComponent.crowdID, offset, startPosition

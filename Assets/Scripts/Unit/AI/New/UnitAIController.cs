@@ -1,9 +1,11 @@
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace CoreGameUnitAI
 {
+    [System.Serializable]
     public class AIContext
     {
         public MovableUnit self;
@@ -12,6 +14,9 @@ namespace CoreGameUnitAI
         public float3 destination;
 
         // Cache
+        /// <summary>
+        /// Cached combat component of self unit
+        /// </summary>
         public CombatComponent combatComponent = null;
 
         public AIContext(MovableUnit self)
@@ -30,11 +35,15 @@ namespace CoreGameUnitAI
         void Update(float dt); // Per tick update
     }
 
+    [System.Serializable]
     public class UnitAIController
     {
         public AIContext context;
         private Stack<IAIController> aiStack = new Stack<IAIController>();
+        public List<string> aiStackVisualized = new List<string>();
+        [SerializeField]
         private IAIController currentAI;
+        public bool enabled = false;
 
         public UnitAIController(MovableUnit self, IAIController defaultAI)
         {
@@ -51,6 +60,11 @@ namespace CoreGameUnitAI
         public MovableUnit GetSelf()
         {
             return context.self;
+        }
+
+        public MovementComponent GetMovementComponent()
+        {
+            return context.self.movementComponent;
         }
 
         public MovableUnit GetTarget()
@@ -74,11 +88,11 @@ namespace CoreGameUnitAI
             return diffBetweenTargetSqr;
         }
 
-        public bool IsAttackable(float givenRange)
+        public bool IsTargetWithinLineOfSight(float givenLineOfSight)
         {
             if (StatComponent.IsUnitAliveOrValid(context.target))
             {
-                if (GetSqrMagnitudeToTarget() < givenRange * givenRange)
+                if (GetSqrMagnitudeToTarget() < givenLineOfSight * givenLineOfSight)
                 {
                     return true;
                 }
@@ -91,13 +105,15 @@ namespace CoreGameUnitAI
         {
             MovableUnit self = GetSelf();
             MovableUnit target = GetTarget();
+            self.movementComponent.StartPathfind(newTargetPosition, true);
             targetPosition = newTargetPosition;
-            self.movementComponent.StartPathfind(GetTargetPosition(), true);
         }
 
-        public bool IsTargetWithinRange(float givenLineOfSight)
+        public bool IsTargetWithinRange(float givenRange)
         {
-            if (GetSqrMagnitudeToTarget() < (givenLineOfSight) * (givenLineOfSight))
+            float checkRange = Mathf.Max(context.self.movementComponent.radius + context.target.movementComponent.radius + 0.01f, givenRange);
+            float sqrMagnitude = GetSqrMagnitudeToTarget();
+            if (sqrMagnitude < (checkRange * checkRange))
             {
                 return true;
             }
@@ -142,13 +158,17 @@ namespace CoreGameUnitAI
                 if (target.IsShip()) { }
                 return;
             }
-            self.movementComponent.Stop();
             self.actionComponent.StartAction();
             context.combatComponent.StartDelay();
         }
 
-        public void SetAI(IAIController newAI, bool pushPrevious = true)
+        public void SetAI(IAIController newAI, bool pushPrevious = true, bool clearAi = false)
         {
+            if (clearAi)
+            {
+                ClearAI();
+            }
+
             if (newAI == null)
             {
                 NativeLogger.Warning("SetAI was called with null. Ignoring.");
@@ -203,6 +223,7 @@ namespace CoreGameUnitAI
 
         bool IsUpdateable()
         {
+            if (!enabled) return false;
             return StatComponent.IsUnitAliveOrValid(context.self);
         }
 
@@ -213,7 +234,14 @@ namespace CoreGameUnitAI
 
         public void Update(float dt)
         {
-            if (IsUpdateable())
+            aiStackVisualized.Clear();
+            aiStackVisualized.Add(currentAI.ToString());
+            foreach(var i in aiStack)
+            {
+                aiStackVisualized.Add(i.ToString());
+            }
+
+            if (!IsUpdateable())
             {
                 return;
             }

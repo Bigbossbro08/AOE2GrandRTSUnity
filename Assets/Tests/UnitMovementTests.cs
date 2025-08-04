@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.TestTools;
+using UnityEngine.UIElements;
 
 public class UnitMovementTests : BasePlayModeTest
 {
@@ -164,7 +165,7 @@ public class UnitMovementTests : BasePlayModeTest
     
     static readonly Vector3 DefaultSpawnPos = new(126.99f, 0f, 95.72f);
     static readonly Vector3 DefaultEuler = Vector3.zero;
-    static readonly Vector3 TestTriggerPos = new(114.44f, 0.341f, 98.06f); 
+    static readonly Vector3 TestTriggerPos = new(90.59f, 2.742795f, 99.88f);
 
     [UnityTest]
     public IEnumerator TestMovementInGroup()
@@ -173,25 +174,17 @@ public class UnitMovementTests : BasePlayModeTest
 
         // 1) pick your start positions in a simple list
         var positions = new List<Vector3> {
-        new(126.99f, 0f, 95.72f),
-        new(126.99f, 0f, 95.187f),
-        new(126.99f, 0f, 96.26f),
-        new(126.99f, 0f, 98.497f),
-        new(127.45f, 0f, 97.517f),
-        new(127.45f, 0f, 96.26f),
-        new(127.45f, 0f, 96.7f),
-        new(126.99f, 0f, 96.7f),
-        new(127.45f, 0f, 98.057f),
-        new(126.99f, 0f, 94.747f),
-        new(127.45f, 0f, 98.497f),
-        new(127.45f, 0f, 94.747f),
-        new(126.99f, 0f, 94.207f),
-        new(127.45f, 0f, 95.72f),
-        new(126.99f, 0f, 98.057f),
-        new(126.99f, 0f, 97.517f),
-        new(127.45f, 0f, 95.187f),
-        new(127.45f, 0f, 94.207f)
-    };
+            new Vector3(99.55f, 2.742795f, 99.02f),
+            new Vector3(100.13f, 2.742795f, 99.06f),
+            new Vector3(99.53003f, 2.742794f, 99.68001f),
+            new Vector3(100.04f, 2.742795f, 99.68001f),
+            new Vector3(99.53003f, 2.742795f, 100.34f),
+            new Vector3(100.04f, 2.742795f, 100.34f),
+            new Vector3(99.53003f, 2.742795f, 100.99f),
+            new Vector3(100.04f, 2.742795f, 100.99f),
+        };
+
+        GameManager.Instance.CameraHandler.transform.position = TestTriggerPos;
 
         // 2) spawn them all in one call
         var units = SpawnUnitsAt(positions, u => u.playerId = 1);
@@ -216,12 +209,113 @@ public class UnitMovementTests : BasePlayModeTest
         {
             action = MoveUnitsCommand.commandName,
             unitIDs = units.Select(u => u.id).ToList(),
-            position = new Vector3(114.2f, 0.0233f, 98.04f),
+            position = TestTriggerPos,
             IsAttackMove = false
         });
 
         // 5) wait until all of them have entered
         yield return WaitUntilCount(units.Count, () => hitCount);
+
+        yield return new WaitForSeconds(5);
+
+        // 6) clean up is automatic; final assert
+        Assert.Pass("All units arrived successfully");
+    }
+
+    [UnityTest]
+    public IEnumerator TestMeleeCombat()
+    {
+        yield return LoadGameScene();
+
+        // 1) pick your start positions in a simple list
+        var p1_positions = new List<Vector3> {
+            new Vector3(99.55f, 2.742795f, 99.02f),
+            new Vector3(100.13f, 2.742795f, 99.06f),
+            new Vector3(99.53003f, 2.742794f, 99.68001f),
+            new Vector3(100.04f, 2.742795f, 99.68001f),
+            new Vector3(99.53003f, 2.742795f, 100.34f),
+            new Vector3(100.04f, 2.742795f, 100.34f),
+            new Vector3(99.53003f, 2.742795f, 100.99f),
+            new Vector3(100.04f, 2.742795f, 100.99f),
+        };
+
+        var p2_positions = new List<Vector3>
+        {
+            new Vector3(103.12f, 2.742795f, 99.02f),
+            new Vector3(103.7f, 2.742795f, 99.06f),
+            new Vector3(103.1f, 2.742794f, 99.68001f),
+            new Vector3(103.61f, 2.742795f, 99.68001f),
+            new Vector3(103.1f, 2.742795f, 100.34f),
+            new Vector3(103.61f, 2.742795f, 100.34f),
+            new Vector3(103.1f, 2.742795f, 100.99f),
+            new Vector3(103.62f, 2.742795f, 100.78f),
+        };
+
+        Vector3 centerPos = Vector3.zero;
+        foreach (var position in p1_positions)
+        {
+            centerPos += position;
+        }
+        foreach (var position in p2_positions)
+        {
+            centerPos += position;
+        }
+        centerPos /= p1_positions.Count + p2_positions.Count;
+
+        GameManager.Instance.CameraHandler.transform.position = centerPos;
+
+        // 2) spawn them all in one call
+        var p1_units = SpawnUnitsAt(p1_positions, u => u.playerId = 1);
+        var p2_units = SpawnUnitsAt(p2_positions, u => u.playerId = 2);
+
+        int playerOneUnitCounts = p1_units.Count;
+        int playerTwoUnitCounts = p2_units.Count;
+        int playerOneDeaths = 0;
+        int playerTwoDeaths = 0;
+
+        void Event_OnDeath(object[] obj)
+        {
+            ulong selfId = (ulong)obj[0];
+            Unit unit = UnitManager.Instance.GetUnit(selfId);
+            if (unit)
+            {
+                if (unit.playerId == 1)
+                {
+                    playerOneDeaths++;
+                }
+                if (unit.playerId == 2)
+                {
+                    playerTwoDeaths++;
+                }
+            }
+
+            //NativeLogger.Log($"OnDeath Event fired and values are {selfId}");
+        }
+
+        UnitEventHandler.Instance.RegisterEvent((int)UnitEventHandler.EventID.OnDeath, Event_OnDeath);
+        _cleanUps.Add(() =>
+        {
+            UnitEventHandler.Instance.UnRegisterEvent((int)UnitEventHandler.EventID.OnDeath, Event_OnDeath);
+        });
+
+        bool UnitDeathCheck()
+        {
+            if (playerOneDeaths == playerOneUnitCounts)
+            {
+                return true;
+            }
+            if (playerTwoDeaths == playerTwoUnitCounts) {
+                return true;
+            }
+            return false;
+        }
+
+        while (!UnitDeathCheck())
+        {
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(5);
 
         // 6) clean up is automatic; final assert
         Assert.Pass("All units arrived successfully");
@@ -231,6 +325,8 @@ public class UnitMovementTests : BasePlayModeTest
     public IEnumerator TestSingleUnitMovement()
     {
         yield return LoadGameScene();
+
+        GameManager.Instance.CameraHandler.transform.position = TestTriggerPos;
 
         // spawn & init
         var unit = SpawnUnit(DefaultSpawnPos, DefaultEuler, u => u.playerId = 1);

@@ -1,39 +1,17 @@
 using UnityEngine;
 using Unity.Mathematics;
+using TMPro;
 
 namespace CoreGameUnitAI
 {
-    public class AttackAI : IAIController
+    [System.Serializable]
+    public class AttackAI : MoveToTargetAI, IAIController
     {
-        public enum State
+        SearchForEnemy searchForEnemy = null;
+        bool ordered = false;
+        public AttackAI(UnitAIController controller, MovableUnit initialTarget = null, bool ordered = false) : base(controller, initialTarget)
         {
-            MovingTowardsTarget,
-            CloseToTarget
-        }
-
-        const float thredholdForRepath = 0.14f * 1.1f;
-        const float thredholdForRepathSqr = thredholdForRepath * thredholdForRepath;
-        const float timeToRepath = 0.5f;
-
-        UnitAIController controller = null;
-        public State desiredState;
-        public State currentState;
-        Vector3 targetPosition = float3.zero;
-        float repathTimer = 0f;
-        float range = 4.0f;
-        float lineOfSight = 5.0f;
-        ulong crowdId = 0;
-
-        public AttackAI(UnitAIController controller, MovableUnit initialTarget = null, float range = 4.0f, float lineOfSight = 5.0f)
-        {
-            this.controller = controller;
-            this.controller.context.target = initialTarget;
-            this.desiredState = State.MovingTowardsTarget;
-            this.range = range;
-            this.lineOfSight = lineOfSight;
-            MovableUnit self = controller.context.self;
-            ulong newCrowdID = ++UnitManager.crowdIDCounter;
-            crowdId = newCrowdID;
+            this.ordered = ordered;
         }
 
         void HandleStateChange()
@@ -55,70 +33,77 @@ namespace CoreGameUnitAI
                     default:
                         break;
                 }
-                // Move towards attack target and if close enough then attack already
                 currentState = desiredState;
             }
         }
 
-        public void Enter()
+        void ChangeTarget(MovableUnit target)
         {
-            controller.GetSelf().movementComponent.crowdID = crowdId;
+            MovableUnit self = controller.GetSelf();
+            controller.context.target = target;
+            foreach (var action in self.actionComponent.actions)
+            {
+                if (action.eventId == UnitEventHandler.EventID.OnAttack && action.parameters.Length == 3)
+                {
+                    action.parameters[1] = (ulong)target.id;
+                }
+            }
+        }
+
+        public new void Enter()
+        {
+            targetPosition = controller.GetTargetPosition();
+            MovableUnit self = controller.GetSelf();
+            if (!ordered)
+            {
+                searchForEnemy = new SearchForEnemy(self, self.movementComponent.radius * 3, 0.1f);
+            }
+            MovableUnit target = controller.GetTarget();
+            CombatComponent combatComponent = controller.context.combatComponent;
+            self.movementComponent.StartPathfind(targetPosition);
+            self.movementComponent.crowdID = crowdId;
+            self.actionComponent.SetActionSprite(combatComponent.attackSprite, "CombatEndAction", combatComponent.actionEvents);
+            ChangeTarget(target);
             HandleStateChange();
         }
 
-        public void Exit()
+        public new void Exit()
         {
         }
 
-        void PerformMovement(float dt)
+        public override void Process_MovingTowardsTarget(float dt)
         {
-            float deltaTime = dt;
-            MovableUnit self = controller.GetSelf();
-            Vector3 newTargetPosition = controller.GetTargetPosition();
-            Vector3 diff = targetPosition - newTargetPosition;
-            if (math.lengthsq(diff) > thredholdForRepathSqr)
-            {
-                controller.Repath(newTargetPosition, ref targetPosition);
-            }
-
-            bool repathCheck = false;
-            repathTimer += deltaTime;
-            if (repathTimer > timeToRepath)
-            {
-                repathCheck = true;
-                repathTimer = 0;
-            }
-
-            if (repathCheck && self.movementComponent.movementState == MovementComponent.State.Idle)
-            {
-                controller.Repath(newTargetPosition, ref targetPosition);
-            }
-        }
-
-        void Process_MovingTowardsTarget(float dt)
-        {
-            if (!controller.IsAttackable(range))
+            if (!controller.IsTargetWithinLineOfSight(controller.context.combatComponent.lineOfSight))
             {
                 controller.RevertToPreviousAI();
                 return;
             }
-            if (controller.IsTargetWithinRange(lineOfSight + 0.1f))
+            if (controller.IsTargetWithinRange(controller.context.combatComponent.attackRange))
             {
                 desiredState = State.CloseToTarget;
             }
 
+            if (!ordered && searchForEnemy != null)
+            {
+                if (searchForEnemy.Update(dt, out MovableUnit enemyUnit))
+                {
+                    ChangeTarget(enemyUnit);
+                    Debug.Log("Searching for closerby target");
+                }
+            }
+        
             PerformMovement(dt);
         }
 
-        void Process_CloseToTarget()
+        public override void Process_CloseToTarget()
         {
-            if (!controller.IsAttackable(range))
+            if (!controller.IsTargetWithinLineOfSight(controller.context.combatComponent.lineOfSight))
             {
                 controller.RevertToPreviousAI();
                 return;
             }
 
-            if (!controller.IsTargetWithinRange(lineOfSight))
+            if (!controller.IsTargetWithinRange(controller.context.combatComponent.attackRange))
             {
                 desiredState = State.MovingTowardsTarget;
             }
@@ -127,7 +112,7 @@ namespace CoreGameUnitAI
             controller.PerformAttackAction();
         }
 
-        public void Update(float dt)
+        public new void Update(float dt)
         {
             HandleStateChange();
 

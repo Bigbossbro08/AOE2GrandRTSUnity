@@ -153,6 +153,9 @@ public class UnitManager : MonoBehaviour
         [JsonProperty("use_steering")]
         public bool? use_steering = false;
 
+        [JsonProperty("line_of_sight")]
+        public float? line_of_sight = 5.0f;
+
         [JsonProperty("attack_delay")]
         public float attack_delay = 1.0f;
 
@@ -444,6 +447,7 @@ public class UnitManager : MonoBehaviour
 
         UnitManager.Instance.spatialHashGrid.Unregister(unit);
         unit.transform.SetParent(null, true);
+        unit.aiController.enabled = false;
 
         if (unit.IsShip())
         {

@@ -64,7 +64,7 @@ public class TargetFollowingMovementAIModule : UnitAIModule, IDeterministicUpdat
     {
         if (newState == State.NoTarget)
         {
-            self.ResetToDefaultModule();
+            //self.ResetToDefaultModule();
             enabled = false;
         }
     }

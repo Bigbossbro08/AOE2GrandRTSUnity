@@ -12,7 +12,7 @@ public class CombatComponent : UnitTypeComponent, IDeterministicUpdate
     }
 
     public string attackSprite = "";
-    //public float damage = 0;
+    public float lineOfSight = 0f;
     public float attackRange = 0f;
     public float attackDelay = 0f;
     public float currentAttackDelay = 0f;

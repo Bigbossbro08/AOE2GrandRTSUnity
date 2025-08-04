@@ -38,9 +38,11 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
     public UnitAIModule aiModule;
 
     public Transform aiTransformHolder;
+    public CoreGameUnitAI.UnitAIController aiController;
+    
+    //public UnitAIModule.AIModule defaultModule = UnitAIModule.AIModule.BasicAttackAIModule;
+    //public List<object> defaultAiModuleArgs = new List<object>() { null, true };
 
-    public UnitAIModule.AIModule defaultModule = UnitAIModule.AIModule.BasicAttackAIModule;
-    public List<object> defaultAiModuleArgs = new List<object>() { null, true };
     public System.Action<ulong> OnRelease = (id) => { };
 
     [SerializeField] DeterministicVisualUpdater DeterministicVisualUpdater;
@@ -450,7 +452,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 foreach (var navLink in navMeshLinks)
                 {
                     navLink.gameObject.SetActive(false);
-                    navLink.UpdateLink();
+                    //navLink.UpdateLink();
                 }
 
                 foreach (var unit in unitsOnShip)
@@ -619,139 +621,140 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     private void Awake()
     {
+        aiController = new CoreGameUnitAI.UnitAIController(this, new IdleAI(aiController));
         shipData = new ShipData();
         movementComponent = GetComponent<MovementComponent>();
     }
 
-    public void ResetToDefaultModule()
-    {
-        SetAIModule(defaultModule, defaultAiModuleArgs.ToArray());
-    }
+    //public void ResetToDefaultModule()
+    //{
+    //    SetAIModule(defaultModule, defaultAiModuleArgs.ToArray());
+    //}
 
-    public void SetAIModule(UnitAIModule.AIModule newModuleType, params object[] aiArgs)
-    {
-        string moduleName = newModuleType.ToString();
+    //public void SetAIModule(UnitAIModule.AIModule newModuleType, params object[] aiArgs)
+    //{
+    //    string moduleName = newModuleType.ToString();
 
-        // Format args to string
-        string formattedArgs = aiArgs == null || aiArgs.Length == 0
-        ? "(no args)"
-            : string.Join(", ", aiArgs.Select(arg => arg?.ToString() ?? "null"));
+    //    // Format args to string
+    //    string formattedArgs = aiArgs == null || aiArgs.Length == 0
+    //    ? "(no args)"
+    //        : string.Join(", ", aiArgs.Select(arg => arg?.ToString() ?? "null"));
 
-        NativeLogger.Log($"Unit {id} running the module {moduleName} and arguments {formattedArgs}");
+    //    NativeLogger.Log($"Unit {id} running the module {moduleName} and arguments {formattedArgs}");
 
-        aiModule.enabled = false;
-        Transform aiModuleTransform = aiTransformHolder.Find(moduleName);
-        aiModule = aiModuleTransform.GetComponent<UnitAIModule>();
+    //    aiModule.enabled = false;
+    //    Transform aiModuleTransform = aiTransformHolder.Find(moduleName);
+    //    aiModule = aiModuleTransform.GetComponent<UnitAIModule>();
 
-        switch (newModuleType)
-        {
-            case UnitAIModule.AIModule.BasicAttackAIModule:
-                {
-                    BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
-                    MovableUnit target = (MovableUnit)aiArgs[0];
-                    bool autoSearchable = (bool)aiArgs[1];
-                    bool isTargeted = false;
-                    if (aiArgs.Length >= 3)
-                    {
-                        isTargeted = (bool)aiArgs[2];
-                    }
-                    basicAttackAIModule.InitializeAI(this, target, autoSearchable, isTargeted);
-                }
-                break;
-            case UnitAIModule.AIModule.BasicMovementAIModule:
-                {
-                    Vector3 position = (Vector3)aiArgs[0];
-                    ulong crowdId = (ulong)aiArgs[1];
-                    Vector3 offset = Vector3.zero;
-                    Vector3? startPosition = null;
-                    if (aiArgs.Length == 3)
-                    {
-                        offset = (Vector3)aiArgs[2];
-                    }
-                    if (aiArgs.Length == 4)
-                    {
-                        offset = (Vector3)aiArgs[2];
-                        startPosition = (Vector3)aiArgs[3];
-                    }
-                    BasicMovementAIModule basicMovementAIModule = (BasicMovementAIModule)aiModule;
-                    basicMovementAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
-                }
-                break;
-            case UnitAIModule.AIModule.TargetFollowingMovementAIModule:
-                {
-                    TargetFollowingMovementAIModule targetFollowingMovementAIModule = (TargetFollowingMovementAIModule)aiModule;
-                    MovableUnit target = (MovableUnit)aiArgs[0];
-                    ulong crowdId = (ulong)aiArgs[1];
-                    Vector3 offset = (Vector3)aiArgs[2];
-                    bool resetTargetOnClose = (bool)aiArgs[3];
-                    targetFollowingMovementAIModule.InitializeAI(this, target, crowdId, offset, resetTargetOnClose);
-                }
-                break;
-            case UnitAIModule.AIModule.AttackMoveAIModule:
-                {
-                    Vector3 position = (Vector3)aiArgs[0];
-                    ulong crowdId = (ulong)aiArgs[1];
-                    Vector3 offset = Vector3.zero;
-                    Vector3? startPosition = null;
-                    if (aiArgs.Length == 3)
-                    {
-                        offset = (Vector3)aiArgs[2];
-                    }
-                    if (aiArgs.Length == 4)
-                    {
-                        offset = (Vector3)aiArgs[2];
-                        startPosition = (Vector3)aiArgs[3];
-                    }
-                    AttackMoveAIModule attackMoveAIModule = (AttackMoveAIModule)aiModule;
-                    attackMoveAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
-                }
-                break;
-            case UnitAIModule.AIModule.BoardshipUnitAIModule:
-                {
-                    BoardshipUnitAIModule boardshipUnitAIModule = (BoardshipUnitAIModule)aiModule;
-                    MovableUnit target = (MovableUnit)aiArgs[0];
-                    ulong crowdId = (ulong)aiArgs[1];
-                    Vector3 offset = (Vector3)aiArgs[2];
-                    bool resetTargetOnClose = (bool)aiArgs[3];
-                    boardshipUnitAIModule.InitializeAI(this, target, crowdId, offset, resetTargetOnClose);
-                }
-                break;
-            case UnitAIModule.AIModule.DockToShoreUnitAIModule:
-                {
-                    Vector3 position = (Vector3)aiArgs[0];
-                    ulong crowdId = (ulong)aiArgs[1];
-                    Vector3 offset = Vector3.zero;
-                    Vector3? startPosition = null;
-                    if (aiArgs.Length == 3)
-                    {
-                        offset = (Vector3)aiArgs[2];
-                    }
-                    if (aiArgs.Length == 4)
-                    {
-                        offset = (Vector3)aiArgs[2];
-                        startPosition = (Vector3)aiArgs[3];
-                    }
-                    DockToShoreUnitAIModule dockToShoreUnitAIModule = (DockToShoreUnitAIModule)aiModule;
-                    dockToShoreUnitAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
-                }
-                break;
-            //case UnitAIModule.AIModule.BasicShipAIModule:
-            //    {
-            //        IdleUnitAIModule basicShipUnitAIModule = (IdleUnitAIModule)aiModule;
-            //        MovableUnit target = (MovableUnit)aiArgs[0];
-            //        bool autoSearchable = (bool)aiArgs[1];
-            //        bool isTargeted = false;
-            //        if (aiArgs.Length >= 3)
-            //        {
-            //            isTargeted = (bool)aiArgs[2];
-            //        }
-            //        basicShipUnitAIModule.InitializeAI(this, target, autoSearchable, isTargeted);
-            //    }
-            //    break;
-            default:
-                break;
-        }
-    }
+    //    switch (newModuleType)
+    //    {
+    //        case UnitAIModule.AIModule.BasicAttackAIModule:
+    //            {
+    //                BasicAttackAIModule basicAttackAIModule = (BasicAttackAIModule)aiModule;
+    //                MovableUnit target = (MovableUnit)aiArgs[0];
+    //                bool autoSearchable = (bool)aiArgs[1];
+    //                bool isTargeted = false;
+    //                if (aiArgs.Length >= 3)
+    //                {
+    //                    isTargeted = (bool)aiArgs[2];
+    //                }
+    //                basicAttackAIModule.InitializeAI(this, target, autoSearchable, isTargeted);
+    //            }
+    //            break;
+    //        case UnitAIModule.AIModule.BasicMovementAIModule:
+    //            {
+    //                Vector3 position = (Vector3)aiArgs[0];
+    //                ulong crowdId = (ulong)aiArgs[1];
+    //                Vector3 offset = Vector3.zero;
+    //                Vector3? startPosition = null;
+    //                if (aiArgs.Length == 3)
+    //                {
+    //                    offset = (Vector3)aiArgs[2];
+    //                }
+    //                if (aiArgs.Length == 4)
+    //                {
+    //                    offset = (Vector3)aiArgs[2];
+    //                    startPosition = (Vector3)aiArgs[3];
+    //                }
+    //                BasicMovementAIModule basicMovementAIModule = (BasicMovementAIModule)aiModule;
+    //                basicMovementAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
+    //            }
+    //            break;
+    //        case UnitAIModule.AIModule.TargetFollowingMovementAIModule:
+    //            {
+    //                TargetFollowingMovementAIModule targetFollowingMovementAIModule = (TargetFollowingMovementAIModule)aiModule;
+    //                MovableUnit target = (MovableUnit)aiArgs[0];
+    //                ulong crowdId = (ulong)aiArgs[1];
+    //                Vector3 offset = (Vector3)aiArgs[2];
+    //                bool resetTargetOnClose = (bool)aiArgs[3];
+    //                targetFollowingMovementAIModule.InitializeAI(this, target, crowdId, offset, resetTargetOnClose);
+    //            }
+    //            break;
+    //        case UnitAIModule.AIModule.AttackMoveAIModule:
+    //            {
+    //                Vector3 position = (Vector3)aiArgs[0];
+    //                ulong crowdId = (ulong)aiArgs[1];
+    //                Vector3 offset = Vector3.zero;
+    //                Vector3? startPosition = null;
+    //                if (aiArgs.Length == 3)
+    //                {
+    //                    offset = (Vector3)aiArgs[2];
+    //                }
+    //                if (aiArgs.Length == 4)
+    //                {
+    //                    offset = (Vector3)aiArgs[2];
+    //                    startPosition = (Vector3)aiArgs[3];
+    //                }
+    //                AttackMoveAIModule attackMoveAIModule = (AttackMoveAIModule)aiModule;
+    //                attackMoveAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
+    //            }
+    //            break;
+    //        case UnitAIModule.AIModule.BoardshipUnitAIModule:
+    //            {
+    //                BoardshipUnitAIModule boardshipUnitAIModule = (BoardshipUnitAIModule)aiModule;
+    //                MovableUnit target = (MovableUnit)aiArgs[0];
+    //                ulong crowdId = (ulong)aiArgs[1];
+    //                Vector3 offset = (Vector3)aiArgs[2];
+    //                bool resetTargetOnClose = (bool)aiArgs[3];
+    //                boardshipUnitAIModule.InitializeAI(this, target, crowdId, offset, resetTargetOnClose);
+    //            }
+    //            break;
+    //        case UnitAIModule.AIModule.DockToShoreUnitAIModule:
+    //            {
+    //                Vector3 position = (Vector3)aiArgs[0];
+    //                ulong crowdId = (ulong)aiArgs[1];
+    //                Vector3 offset = Vector3.zero;
+    //                Vector3? startPosition = null;
+    //                if (aiArgs.Length == 3)
+    //                {
+    //                    offset = (Vector3)aiArgs[2];
+    //                }
+    //                if (aiArgs.Length == 4)
+    //                {
+    //                    offset = (Vector3)aiArgs[2];
+    //                    startPosition = (Vector3)aiArgs[3];
+    //                }
+    //                DockToShoreUnitAIModule dockToShoreUnitAIModule = (DockToShoreUnitAIModule)aiModule;
+    //                dockToShoreUnitAIModule.InitializeAI(this, position, crowdId, offset, startPosition);
+    //            }
+    //            break;
+    //        //case UnitAIModule.AIModule.BasicShipAIModule:
+    //        //    {
+    //        //        IdleUnitAIModule basicShipUnitAIModule = (IdleUnitAIModule)aiModule;
+    //        //        MovableUnit target = (MovableUnit)aiArgs[0];
+    //        //        bool autoSearchable = (bool)aiArgs[1];
+    //        //        bool isTargeted = false;
+    //        //        if (aiArgs.Length >= 3)
+    //        //        {
+    //        //            isTargeted = (bool)aiArgs[2];
+    //        //        }
+    //        //        basicShipUnitAIModule.InitializeAI(this, target, autoSearchable, isTargeted);
+    //        //    }
+    //        //    break;
+    //        default:
+    //            break;
+    //    }
+    //}
 
     public DeterministicVisualUpdater GetDeterministicVisualUpdater()
     {
@@ -929,6 +932,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         if (combatComponent)
         {
             combatComponent.attackSprite = movableUnitData.attacking;
+            combatComponent.lineOfSight = movableUnitData.line_of_sight.HasValue ? 5.0f : movableUnitData.line_of_sight.Value;
             combatComponent.attackRange = movableUnitData.attack_range == null ? 0.0f : movableUnitData.attack_range.Value;
             combatComponent.attackDelay = movableUnitData.attack_delay;
             combatComponent.actionEvents.Clear();
@@ -970,16 +974,19 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 }
             };
             //if (!IsShip())
-            {
-                defaultModule = UnitAIModule.AIModule.BasicAttackAIModule;
-                defaultAiModuleArgs = new List<object>() { null, true };
-            }
+            //{
+            //    defaultModule = UnitAIModule.AIModule.BasicAttackAIModule;
+            //    defaultAiModuleArgs = new List<object>() { null, true };
+            //}
             //else
             //{
             //    defaultModule = UnitAIModule.AIModule.BasicShipAIModule;
             //    defaultAiModuleArgs = new List<object> { null, true };
             //}
-            ResetToDefaultModule();
+            //ResetToDefaultModule();
+            aiController.DefaultAI = new IdleAI(aiController);
+            aiController.ClearAI();
+            aiController.enabled = true;
             DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
         }
     }
@@ -1180,6 +1187,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
+        aiController?.Update(deltaTime);
         UpdateGridCell();
         UpdateVelocityCall();
     }
