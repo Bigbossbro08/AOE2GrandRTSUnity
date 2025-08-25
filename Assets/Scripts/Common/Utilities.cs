@@ -113,6 +113,28 @@ public static class Utilities
             }
         }
     }
+    public static class VisibilityUtility
+    {
+        public static bool IsPointVisible(Camera cam, Vector3 worldPos)
+        {
+            Vector3 viewportPos = cam.WorldToViewportPoint(worldPos);
+            return (viewportPos.z > 0 &&
+                    viewportPos.x >= 0 && viewportPos.x <= 1 &&
+                    viewportPos.y >= 0 && viewportPos.y <= 1);
+        }
+    }
+
+    public static float NormalizeAndMapTo01(float angle)
+    {
+        // Step 1: Normalize to -180…180
+        angle = Mathf.Repeat(angle + 180f, 360f) - 180f;
+
+        // Step 2: Clamp to -90…90
+        angle = Mathf.Clamp(angle, -90f, 90f);
+
+        // Step 3: Map to 0…1
+        return Mathf.InverseLerp(-90f, 90f, angle);
+    }
 
     public static Vector3 GetClosestPointOnPath(Vector3 target, List<Vector3> pathPoints)
     {

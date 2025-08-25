@@ -3,10 +3,14 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Assimp.Unmanaged;
+using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using static MovableUnit;
+using Unity.AI.Navigation;
+using static UnitManager;
 
 public class MapLoader : MonoBehaviour
 {
@@ -89,6 +93,61 @@ public class MapLoader : MonoBehaviour
         public string m_DataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\";
     }
 
+    [System.Serializable]
+    public class GameMapData
+    {
+        [System.Serializable]
+        public class GameMetaData
+        {
+            [JsonProperty("visual_scale")]
+            public CommonStructures.SerializableVector3 visualScale;
+            [JsonProperty("navmesh_rotation_offset")]
+            public CommonStructures.SerializableVector3 navMeshRotationOffset;
+            [JsonProperty("navmesh_scale")]
+            public CommonStructures.SerializableVector3 navMeshScale;
+            [JsonProperty("assimp_navmesh_scale")]
+            public float assimpNavmeshScale = 1.0f;
+        }
+
+        [System.Serializable]
+        public class UnitDataJson
+        {
+            [System.Serializable]
+            public class ControllableUnits
+            {
+                [JsonProperty("uid")]
+                public int Uid { get; set; }
+
+                [JsonProperty("player")]
+                public ulong Player { get; set; }
+
+                [JsonProperty("unit_name")]
+                public string UnitName { get; set; }
+
+                [JsonProperty("position")]
+                public CommonStructures.SerializableVector3 Position { get; set; }
+
+                [JsonProperty("angle")]
+                public float Angle { get; set; }
+            }
+            
+            [JsonProperty("controllable_units")]
+            public List<ControllableUnits> controllableUnits { get; set; }
+
+            [JsonProperty("prop_units")]
+            public List<ControllableUnits> propUnits { get; set; }
+        }
+
+        public GameObject holderObject;
+        public GameObject visualHolderObject;
+        public List<GameObject> mapChunkVisuals = new List<GameObject>();
+
+        public GameObject navMeshHolderObject;
+        public NavMeshModifier landNavMeshHolderObject;
+        public NavMeshModifier waterNavMeshHolderObject;
+    }
+
+    public GameMapData mapDataInstance = null;
     public static MapLoader Instance;
 
     void Awake()
@@ -151,6 +210,148 @@ public class MapLoader : MonoBehaviour
     {
         //StartCoroutine(Load());
         //GameManager.Instance.IncrementLoadCount();
+    }
+
+    public bool LoadMap(string path)
+    {
+        try
+        {
+            string mainpath = Path.Combine(MapLoader.GetDataPath(), path);
+
+            string metaDataPath = Path.Combine(mainpath, "level.json");
+            GameMapData.GameMetaData gameMapMetaData = JsonConvert.DeserializeObject<GameMapData.GameMetaData>(File.ReadAllText(metaDataPath));
+
+            //if (!File.Exists(mainpath))
+            //{
+            //    Debug.LogError($"File not found at {mainpath}");
+            //    return false;
+            //}
+
+            string folderPath = Path.Combine(mainpath, "level_bg");
+            string[] files = Directory.GetFiles(folderPath, "*.png");
+
+            GameObject mapHolder = new GameObject($"Map Holder");
+            mapDataInstance = new GameMapData();
+            mapDataInstance.holderObject = mapHolder;
+
+            GameObject visualHolder = new GameObject($"Visual Holder");
+            visualHolder.transform.SetParent(mapHolder.transform, true);
+            mapDataInstance.visualHolderObject = visualHolder;
+
+            Regex pattern = new Regex(@"tile_(-?\d+)_(-?\d+)\.png");
+            foreach (string file in files)
+            {
+                string fileName = Path.GetFileName(file);
+                Match match = pattern.Match(fileName);
+
+                if (match.Success)
+                {
+                    int row = int.Parse(match.Groups[1].Value);
+                    int col = int.Parse(match.Groups[2].Value);
+
+                    Debug.Log($"File: {fileName} | Row: {row} | Col: {col}");
+
+                    // Load texture
+                    byte[] bytes = File.ReadAllBytes(file);
+                    Texture2D texture = new Texture2D(2, 2);
+                    texture.LoadImage(bytes);
+                    texture.filterMode = FilterMode.Point;
+                    // Load map background texture
+
+                    GameObject chunkVisualObj = new GameObject($"Visual Chunk: tile_{row}_{col}");
+                    SpriteRenderer chunkVisualRenderer = chunkVisualObj.AddComponent<SpriteRenderer>();
+                    chunkVisualRenderer.sortingOrder = -9999;
+                    Sprite sprite = Sprite.Create(
+                        texture,
+                        new Rect(0, 0, texture.width, texture.height),
+                        new Vector2(0.5f, 0.5f), // Pivot in the center
+                        100.0f                   // Pixels Per Unit (adjust if needed)
+                    );
+                    chunkVisualRenderer.sprite = sprite;
+                    chunkVisualObj.transform.position = new Vector3(row * 10, col * 10, 0f);
+                    chunkVisualObj.transform.SetParent(visualHolder.transform, true);
+                    mapDataInstance.mapChunkVisuals.Add( chunkVisualObj );
+                }
+                else
+                {
+                    Debug.LogWarning($"File name didn't match pattern: {fileName}");
+                }
+            }
+            visualHolder.transform.eulerAngles = new Vector3(30, -45, 0);
+            visualHolder.transform.localScale = (Vector3)gameMapMetaData.visualScale;
+            GameObject navmeshHolder = new GameObject("Navmesh Holder");
+            navmeshHolder.transform.SetParent(mapHolder.transform, true);
+            NavMeshSurface navMeshSurface = navmeshHolder.AddComponent<NavMeshSurface>();
+            navMeshSurface.collectObjects = CollectObjects.Children;
+            navMeshSurface.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders;
+            mapDataInstance.navMeshHolderObject = navmeshHolder;
+
+            {
+                GameObject landNavmeshObj = new GameObject("Land Nav Mesh");
+                string landPath = Path.Combine(path, "land");
+                AssimpMeshLoader.MeshReturnData meshReturnData = AssimpMeshLoader.Instance.LoadMeshFromAssimp(landPath); 
+                float size = gameMapMetaData.assimpNavmeshScale;
+                UnityEngine.Mesh mesh = AssimpMeshLoader.ScaleMesh(meshReturnData.mesh, size);
+                MeshCollider meshCollider = landNavmeshObj.AddComponent<MeshCollider>();
+                meshCollider.sharedMesh = mesh;
+                landNavmeshObj.transform.SetParent(navmeshHolder.transform, true);
+                NavMeshModifier navMeshModifier = landNavmeshObj.AddComponent<NavMeshModifier>();
+                navMeshModifier.overrideArea = true;
+                navMeshModifier.area = 0;
+                mapDataInstance.landNavMeshHolderObject = navMeshModifier;
+            }
+
+            {
+                GameObject waterNavmeshObj = new GameObject("Water Nav Mesh");
+                string waterPath = Path.Combine(path, "water");
+                AssimpMeshLoader.MeshReturnData meshReturnData = AssimpMeshLoader.Instance.LoadMeshFromAssimp(waterPath);
+                float size = gameMapMetaData.assimpNavmeshScale;
+                UnityEngine.Mesh mesh = AssimpMeshLoader.ScaleMesh(meshReturnData.mesh, size);
+                MeshCollider meshCollider = waterNavmeshObj.AddComponent<MeshCollider>();
+                meshCollider.sharedMesh = mesh;
+                waterNavmeshObj.transform.SetParent(navmeshHolder.transform, true);
+                NavMeshModifier navMeshModifier = waterNavmeshObj.AddComponent<NavMeshModifier>();
+                navMeshModifier.overrideArea = true;
+                navMeshModifier.area = 3;
+                mapDataInstance.waterNavMeshHolderObject = navMeshModifier;
+            }
+            navmeshHolder.transform.eulerAngles = (Vector3)gameMapMetaData.navMeshRotationOffset;
+            navmeshHolder.transform.localScale = (Vector3)gameMapMetaData.navMeshScale;
+            navMeshSurface.BuildNavMesh();
+
+            string unitsPath = Path.Combine(mainpath, "units.json");
+            GameMapData.UnitDataJson unitDataJson = JsonConvert.DeserializeObject<GameMapData.UnitDataJson>(File.ReadAllText(unitsPath));
+
+            foreach (var cu in unitDataJson.controllableUnits)
+            {
+                System.Action<Unit> PreSpawnAction = (unit) =>
+                {
+                    unit.playerId = cu.Player;
+                    unit.transform.position = (Vector3)cu.Position;
+                    unit.transform.eulerAngles = new Vector3(0, cu.Angle, 0);
+                    unit.unitDataName = cu.UnitName;
+                };
+                UnitManager.Instance.GetMovableUnitFromPool(PreSpawnAction);
+            }
+
+            foreach (var pu in unitDataJson.propUnits)
+            {
+                System.Action<Unit> PreSpawnAction = (unit) =>
+                {
+                    unit.playerId = pu.Player;
+                    unit.transform.position = (Vector3)pu.Position;
+                    unit.transform.eulerAngles = new Vector3(0, pu.Angle, 0);
+                    unit.unitDataName = pu.UnitName;
+                };
+                UnitManager.Instance.GetPropUnitFromPool(PreSpawnAction);
+            }
+
+            return true;
+        }
+        catch (Exception e) {
+            Debug.LogException(e);
+            return false;
+        }
     }
 
     IEnumerator Load()

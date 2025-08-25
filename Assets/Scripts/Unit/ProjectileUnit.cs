@@ -1,13 +1,14 @@
 using Codice.CM.WorkspaceServer;
 using System.Collections.Generic;
 using UnityEngine;
+using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
 
 public class ProjectileUnit : Unit, IDeterministicUpdate
 {
     [SerializeField] private Rigidbody _rigidbody;
-    //[SerializeField] private Transform start;
-    //[SerializeField] private Transform end;
-    Unit sourceUnit = null;
+    [SerializeField] private DeterministicVisualUpdater visualUpdater;
+    public string spriteName = "idle";
+    private Unit sourceUnit = null;
     [SerializeField] private Collider _collider;
     UnitManager.UnitJsonData.DamageData damageData = new UnitManager.UnitJsonData.DamageData();
 
@@ -15,9 +16,27 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
     {
         //transform.position = start.position;
         //LaunchWithVelocity(start.position, end.position, 1);
+        Initialize();
         _rigidbody.isKinematic = false;
         _collider.enabled = true;
         DeterministicUpdateManager.Instance.Register(this);
+    }
+
+    public void SetVisual(string sprite)
+    {
+        Debug.Log("Should update visuals...");
+        visualUpdater.CustomDeterministicVisualUpdate = CustomDeterministicVisualUpdate;
+        visualUpdater.SetSpriteName(sprite, true);
+        visualUpdater.PlayOrResume(false);
+        visualUpdater.playerId = playerId;
+        visualUpdater.RefreshVisuals();
+    }
+
+    void CustomDeterministicVisualUpdate()
+    {
+        float angle = Utilities.NormalizeAndMapTo01(transform.eulerAngles.x);
+        float normalized = Mathf.InverseLerp(-90f, 90f, angle);
+        visualUpdater.elapsedFixedTime = normalized;
     }
 
     private void OnDisable()
@@ -37,15 +56,9 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
             enabled = false;
     }
 
-    public void SetProjectileData(MovableUnit sourceUnit = null, UnitManager.UnitJsonData.DamageData damageData = default, string projectileUnitName = null)
+    public void SetProjectileData(MovableUnit sourceUnit = null, UnitManager.UnitJsonData.DamageData damageData = default)
     {
         UnitManager.UnitJsonData.DamageData newDamageData = damageData;
-        if (projectileUnitName != null)
-        {
-            UnitManager.UnitJsonData.ProjectileUnit projectileUnitData = UnitManager.Instance.LoadProjectileJsonData(projectileUnitName);
-            // TODO: Make it additive
-            //newDamageData += projectileUnitData.damage;
-        }
         this.damageData = newDamageData;
         this.sourceUnit = sourceUnit;
     }
@@ -127,5 +140,10 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
 
         float distance = Vector3.Distance(origin, target);
         return origin + deviatedDir * distance;
+    }
+
+    internal DeterministicVisualUpdater GetDeterministicVisualUpdater()
+    {
+        return visualUpdater;
     }
 }

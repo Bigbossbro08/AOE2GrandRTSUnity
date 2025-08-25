@@ -138,7 +138,7 @@ public class CommandPanelUI : MonoBehaviour
         List<CommandButton.Command> commandButtons = new List<CommandButton.Command>();
 
         CommandButton.Command attackMove = new CommandButton.Command();
-        attackMove.SlotId = 0;
+        attackMove.SlotId = 3;
 
         string attackMoveSpriteName = "data\\ui_buttons\\attack_move";
         CustomSpriteLoader.IconReturnData attackMoveSprite = CustomSpriteLoader.Instance.LoadIconSprite(attackMoveSpriteName);
@@ -156,9 +156,80 @@ public class CommandPanelUI : MonoBehaviour
             };
             SetCommands(GetOrderOrCancelCommands("Attack Move", OnCancel));
             StartBlockUI();
-        }; // Implement Attack Move Toggle when pressed
+
+            SetOrderAction((hit) =>
+            {
+                List<ulong> ids = new List<ulong>();
+                foreach (Unit u in selectionPanel.GetSelectedUnits())
+                {
+                    if (u.GetType() == typeof(MovableUnit))
+                    {
+                        if (u.playerId == 1)
+                            ids.Add(u.GetUnitID());
+                    }
+                }
+
+                if (ids.Count > 0)
+                {
+                    MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
+                    moveUnitsCommand.action = MoveUnitsCommand.commandName;
+                    moveUnitsCommand.unitIDs = new List<ulong>();
+                    moveUnitsCommand.unitIDs.AddRange(ids);
+                    moveUnitsCommand.position = hit.point;
+                    moveUnitsCommand.IsAttackMove = true;
+                    InputManager.Instance.SendInputCommand(moveUnitsCommand);
+                }
+            });
+        }; 
 
         commandButtons.Add(attackMove);
+
+        CommandButton.Command patrolMove = new CommandButton.Command();
+        patrolMove.SlotId = 0;
+        string patrolMoveSpriteName = "data\\ui_buttons\\patrol";
+        CustomSpriteLoader.IconReturnData patrolMoveSprite = CustomSpriteLoader.Instance.LoadIconSprite(patrolMoveSpriteName);
+        if (patrolMoveSprite != null && patrolMoveSprite.sprite != null)
+        {
+            patrolMove.Icon = patrolMoveSprite.sprite;
+        }
+
+        patrolMove.Callback = () => {
+            //Debug.Log($"Clicked for Attack Move");
+            System.Action OnCancel = () => {
+                //SetCommands(GetShipUnDockedCommands());
+                FigureoutPanelFromSelection(selectionPanel.GetSelectedUnits());
+                Debug.Log("Cancelled attack move and going back to normal");
+            };
+            SetCommands(GetOrderOrCancelCommands("Attack Move", OnCancel));
+            StartBlockUI();
+
+            SetOrderAction((hit) =>
+            {
+                List<ulong> ids = new List<ulong>();
+                foreach (Unit u in selectionPanel.GetSelectedUnits())
+                {
+                    if (u.GetType() == typeof(MovableUnit))
+                    {
+                        if (u.playerId == 1)
+                            ids.Add(u.GetUnitID());
+                    }
+                }
+
+                Debug.Log("Implement Patrol Move");
+                //if (ids.Count > 0)
+                //{
+                //    MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
+                //    moveUnitsCommand.action = MoveUnitsCommand.commandName;
+                //    moveUnitsCommand.unitIDs = new List<ulong>();
+                //    moveUnitsCommand.unitIDs.AddRange(ids);
+                //    moveUnitsCommand.position = hit.point;
+                //    moveUnitsCommand.IsAttackMove = true;
+                //    InputManager.Instance.SendInputCommand(moveUnitsCommand);
+                //}
+            });
+        };
+
+        commandButtons.Add(patrolMove);
 
         SetOrderAction((hit) =>
         {
@@ -179,7 +250,7 @@ public class CommandPanelUI : MonoBehaviour
                 moveUnitsCommand.unitIDs = new List<ulong>();
                 moveUnitsCommand.unitIDs.AddRange(ids);
                 moveUnitsCommand.position = hit.point;
-                moveUnitsCommand.IsAttackMove = this.blockUI;
+                moveUnitsCommand.IsAttackMove = false;
                 InputManager.Instance.SendInputCommand(moveUnitsCommand);
             }
         });

@@ -192,8 +192,13 @@ public class UnitEventHandler : MonoBehaviour
                 // TODO: make accuracy more data based
                 Vector3 targetPosition = ProjectileUnit.GetInaccurateTarget(startPosition, targetUnit.transform.position + Vector3.up * enemyHeight, 80, 5);
                 //NativeLogger.Log($" ");
-                ProjectileUnit projectile = UnitManager.Instance.projectileUnitPool.Get();
-                projectile.SetProjectileData(selfMovableUnit, damage, combatComponent.projectile_unit);
+                System.Action<Unit> PreSpawnAction = (unit) =>
+                {
+                    unit.unitDataName = combatComponent.projectile_unit;
+                    unit.playerId = selfMovableUnit.playerId;
+                };
+                ProjectileUnit projectile = UnitManager.Instance.GetProjectileUnitFromPool(PreSpawnAction);;
+                projectile.SetProjectileData(selfMovableUnit, damage);
                 projectile.LaunchWithVelocity(startPosition, targetPosition, time);
             }
         }
@@ -250,6 +255,21 @@ public class UnitEventHandler : MonoBehaviour
                             UnitManager.Instance.ReleaseMovableUnitFromPool(movableUnit);
                             //UnitManager.Instance.movableUnitPool.Release(movableUnit);
                             CallEventByID(EventID.OnCorpseSpawn, movableUnit.id, deadUnit.id);
+
+                            if (!string.IsNullOrEmpty(militaryUnit.dismounted_unit))
+                            {
+                                System.Action<Unit> dismountedPreSpawn = (unit) =>
+                                {
+                                    MovableUnit dismountedUnit = (MovableUnit)unit;
+                                    Debug.Assert(dismountedUnit != null);
+
+                                    dismountedUnit.playerId = movableUnit.playerId;
+                                    dismountedUnit.transform.position = movableUnit.transform.position;
+                                    dismountedUnit.transform.rotation = movableUnit.transform.rotation;
+                                    dismountedUnit.unitDataName = militaryUnit.dismounted_unit;
+                                };
+                                UnitManager.Instance.GetMovableUnitFromPool(dismountedPreSpawn);
+                            }
                         }
                     }
                 }

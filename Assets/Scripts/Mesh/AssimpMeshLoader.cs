@@ -64,13 +64,13 @@ public class AssimpMeshLoader : MonoBehaviour
         string path = Path.Combine(MapLoader.GetDataPath());
         string filePath = Path.Combine(path, $"{fileName}.obj");
 
-        //Debug.Log(filePath);
+        NativeLogger.Log($"Trying to load from: {filePath}");
         AssimpContext importer = new AssimpContext();
         Scene scene = importer.ImportFile(filePath, PostProcessSteps.Triangulate | PostProcessSteps.JoinIdenticalVertices);
 
         if (scene == null || scene.MeshCount == 0)
         {
-            Debug.LogError($"Failed to load mesh from: {filePath} from name {fileName}");
+            NativeLogger.Error($"Failed to load mesh from: {filePath} from name {fileName}");
             return null;
         }
 

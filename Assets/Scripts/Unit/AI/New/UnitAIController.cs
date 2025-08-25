@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
+using static PlasticGui.GetProcessName;
 
 namespace CoreGameUnitAI
 {
@@ -44,6 +45,22 @@ namespace CoreGameUnitAI
         [SerializeField]
         private IAIController currentAI;
         public bool enabled = false;
+
+        public class AiControllerParameter
+        {
+            public IAIController newAI;
+            public bool pushPrevious = true;
+            public bool clearAi = false;
+
+            public AiControllerParameter(IAIController newAI, bool pushPrevious, bool clearAi)
+            {
+                this.newAI = newAI;
+                this.pushPrevious = pushPrevious;
+                this.clearAi = clearAi;
+            }
+        }
+
+        AiControllerParameter aiControllerParameter = null;
 
         public UnitAIController(MovableUnit self, IAIController defaultAI)
         {
@@ -164,23 +181,50 @@ namespace CoreGameUnitAI
 
         public void SetAI(IAIController newAI, bool pushPrevious = true, bool clearAi = false)
         {
-            if (clearAi)
+            aiControllerParameter = new AiControllerParameter(newAI, pushPrevious, clearAi);
+            //if (clearAi)
+            //{
+            //    ClearAI();
+            //}
+            //
+            //if (newAI == null)
+            //{
+            //    NativeLogger.Warning("SetAI was called with null. Ignoring.");
+            //    return;
+            //}
+            //
+            //if (pushPrevious && currentAI != null)
+            //    aiStack.Push(currentAI);
+            //
+            //currentAI?.Exit();
+            //currentAI = newAI;
+            //currentAI.Enter();
+        }
+
+        bool HandleAIParameter()
+        {
+            if (aiControllerParameter == null) return false;
+
+            if (aiControllerParameter.clearAi)
             {
                 ClearAI();
             }
 
-            if (newAI == null)
+            if (aiControllerParameter.newAI == null)
             {
                 NativeLogger.Warning("SetAI was called with null. Ignoring.");
-                return;
+                return true;
             }
 
-            if (pushPrevious && currentAI != null)
+            if (aiControllerParameter.pushPrevious && currentAI != null)
                 aiStack.Push(currentAI);
 
             currentAI?.Exit();
-            currentAI = newAI;
+            currentAI = aiControllerParameter.newAI;
             currentAI.Enter();
+
+            aiControllerParameter = null;
+            return true;
         }
 
         public void RevertToPreviousAI()
@@ -224,12 +268,9 @@ namespace CoreGameUnitAI
         bool IsUpdateable()
         {
             if (!enabled) return false;
-            return StatComponent.IsUnitAliveOrValid(context.self);
-        }
-
-        bool IsUpdateBlockable()
-        {
-            return context.self.actionComponent.IsPlayingAction();
+            if (!StatComponent.IsUnitAliveOrValid(context.self)) return false;
+            if (context.self.actionComponent.IsPlayingAction()) return false;
+            return true;
         }
 
         public void Update(float dt)
@@ -246,10 +287,11 @@ namespace CoreGameUnitAI
                 return;
             }
 
-            if (IsUpdateBlockable())
+            if (HandleAIParameter())
             {
                 return;
             }
+
             if (currentAI != null)
             {
                 currentAI.Update(dt);

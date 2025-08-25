@@ -16,7 +16,7 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
         public DeterministicVisualUpdaterData() { type = "DeterministicVisualUpdaterData"; }
     }
 
-    public float elapsedFixedTime { get; private set; }
+    public float elapsedFixedTime { get; set; }
     public string spriteName { get; private set; }
     public bool isLooping = true;
     public float duration = 1.0f;
@@ -36,6 +36,8 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
 
     public delegate void OnRefreshDelegate();
     public event OnRefreshDelegate OnRefreshEvent;
+
+    public System.Action CustomDeterministicVisualUpdate = null;
 
     public void PlayOrResume(bool resume)
     {
@@ -95,6 +97,11 @@ public class DeterministicVisualUpdater : MonoBehaviour, IDeterministicUpdate, I
 
     public void DeterministicUpdate(float deltaTime, ulong tickID)
     {
+        if (CustomDeterministicVisualUpdate != null)
+        {
+            CustomDeterministicVisualUpdate.Invoke();
+            return;
+        } 
         elapsedFixedTime += deltaTime;
         if (elapsedFixedTime >= duration)
         {

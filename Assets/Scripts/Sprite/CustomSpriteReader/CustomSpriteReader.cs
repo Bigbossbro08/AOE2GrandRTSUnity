@@ -14,11 +14,9 @@ public class CustomSpriteReader : MonoBehaviour
 
     [SerializeField] List<Sprite> sprites = new List<Sprite>();
 
-    [SerializeField]
-    private DeterministicVisualUpdater deterministicVisualUpdater;
+    public DeterministicVisualUpdater deterministicVisualUpdater;
 
-    [SerializeField]
-    private Transform mainTransform;
+    public Transform mainTransform;
 
     [SerializeField]
     private Color playerColor;
@@ -31,6 +29,7 @@ public class CustomSpriteReader : MonoBehaviour
 
     void Start()
     {
+        _renderer.sortingOrder = 0;
         transform.eulerAngles = new Vector3(30, -45, 0);
         //StartCoroutine(PlayAnimation());
     }
@@ -55,6 +54,10 @@ public class CustomSpriteReader : MonoBehaviour
     int GetFrame()
     {
         int frameCount = sprites.Count;
+        if (sprites.Count == 1)
+        {
+            return 0;
+        }
         float elapsedTime = deterministicVisualUpdater.elapsedFixedTime;
         float duration = deterministicVisualUpdater.duration;
 
@@ -122,6 +125,7 @@ public class CustomSpriteReader : MonoBehaviour
         if (_renderer == null) return;
         if (_renderer.material == null) return;
         if (sprites.Count == 0) { return; }
+        currentFrame = Mathf.Clamp(currentFrame, 0, sprites.Count - 1);
         _renderer.sprite = sprites[currentFrame];
     }
 
@@ -136,12 +140,12 @@ public class CustomSpriteReader : MonoBehaviour
     {
         if (deterministicVisualUpdater)
         {
-            deterministicVisualUpdater.RefreshVisuals();
             deterministicVisualUpdater.OnPlayOrResumeEvent += DeterministicVisualUpdater_OnPlayOrResumeEvent;
             deterministicVisualUpdater.OnStopOrPauseEvent += DeterministicVisualUpdater_OnStopOrPauseEvent;
             deterministicVisualUpdater.OnSetSpriteNameEvent += DeterministicVisualUpdater_OnSetSpriteNameEvent;
             deterministicVisualUpdater.OnLoadEvent += DeterministicVisualUpdater_OnLoadEvent;
             deterministicVisualUpdater.OnRefreshEvent += DeterministicVisualUpdater_OnRefreshEvent;
+            DeterministicVisualUpdater_OnRefreshEvent();
         }
     }
 
@@ -179,7 +183,6 @@ public class CustomSpriteReader : MonoBehaviour
     private void DeterministicVisualUpdater_OnSetSpriteNameEvent(string name)
     {
         this.spriteName = name;
-        Initialize(name);
         DeterministicVisualUpdater_OnRefreshEvent();
     }
 
@@ -188,22 +191,31 @@ public class CustomSpriteReader : MonoBehaviour
         throw new System.NotImplementedException();
     }
 
-    private void DeterministicVisualUpdater_OnRefreshEvent()
+    public void DeterministicVisualUpdater_OnRefreshEvent()
     {
+        spriteName = deterministicVisualUpdater.spriteName;
+        Initialize(spriteName);
         PlayerData playerData = UnitManager.Instance.GetPlayerData(deterministicVisualUpdater.playerId);
         if (playerData != null)
         {
             CustomSpriteLoader.SpriteReturnData spriteReturnData = CustomSpriteLoader.Instance.LoadSprite(spriteName);
-            _renderer.material.mainTexture = spriteReturnData.mainTexture;
-            MaterialPropertyBlock block = new MaterialPropertyBlock();
-            _renderer.GetPropertyBlock(block);
-            playerColor = playerData.color;
-            block.SetTexture("_MainTex", spriteReturnData.mainTexture);
-            block.SetTexture("_MaskTex", spriteReturnData.maskTexture);
-            block.SetColor("_PlayerColor", playerColor);
-            _renderer.SetPropertyBlock(block);
+            if (spriteReturnData != null)
+            {
+                _renderer.material.mainTexture = spriteReturnData.mainTexture;
+                if (spriteReturnData.layer != null)
+                {
+                    _renderer.sortingLayerID = spriteReturnData.layer.Value;
+                }
+                MaterialPropertyBlock block = new MaterialPropertyBlock();
+                _renderer.GetPropertyBlock(block);
+                playerColor = playerData.color;
+                block.SetTexture("_MainTex", spriteReturnData.mainTexture);
+                block.SetTexture("_MaskTex", spriteReturnData.maskTexture);
+                block.SetColor("_PlayerColor", playerColor);
+                _renderer.SetPropertyBlock(block);
 
-            NewUpdateFrame(Time.deltaTime);
+                NewUpdateFrame(Time.deltaTime);
+            }
         }
     }
 }

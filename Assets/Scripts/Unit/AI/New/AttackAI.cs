@@ -40,12 +40,36 @@ namespace CoreGameUnitAI
         void ChangeTarget(MovableUnit target)
         {
             MovableUnit self = controller.GetSelf();
+            if (target == null || target == self)
+            {
+                NativeLogger.Warning("AttackAI: Target is null or self, cannot change target.");
+                controller.context.target = null;
+                
+                foreach (var action in self.actionComponent.actions)
+                {
+                    switch (action.eventId)
+                    {
+                        case UnitEventHandler.EventID.OnAttack:
+                        case UnitEventHandler.EventID.OnProjectileAttack:
+                            {
+                                action.parameters[1] = 0;
+                            }
+                            break;
+                    }
+                }
+                return;
+            }
             controller.context.target = target;
             foreach (var action in self.actionComponent.actions)
             {
-                if (action.eventId == UnitEventHandler.EventID.OnAttack && action.parameters.Length == 3)
+                switch (action.eventId)
                 {
-                    action.parameters[1] = (ulong)target.id;
+                    case UnitEventHandler.EventID.OnAttack:
+                    case UnitEventHandler.EventID.OnProjectileAttack:
+                        {
+                            action.parameters[1] = (ulong)target.id;
+                        }
+                        break;
                 }
             }
         }

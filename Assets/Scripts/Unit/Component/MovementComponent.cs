@@ -250,6 +250,39 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         }
     }
 
+    public static RaycastHit? FindProperHit(Vector3 targetPosition, int navAreaMask)
+    {
+        int layer = ~(1 << 2 | 1 << 3 | 1 << 6 | 1 << 30);
+        Ray ray = new Ray(targetPosition + Vector3.up * 100, Vector3.down * 200);// Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (Physics.Raycast(ray, out RaycastHit hit, float.MaxValue, layer))
+        {
+            if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 20f, navAreaMask))
+            {
+                ray = new Ray(navHit.position + Vector3.up * 100, Vector3.down * 200);
+                RaycastHit finalHit = hit;
+                RaycastHit[] hits = Physics.RaycastAll(ray, float.MaxValue, layer);
+                foreach (var h in hits)
+                {
+                    if (h.collider.TryGetComponent(out MovableUnit movableUnit))
+                    {
+                        if (!movableUnit.IsShip())
+                        {
+                            continue;
+                        }
+                        return h;
+                    }
+                    finalHit = h;
+                }
+                return finalHit;
+                //if (Physics.Raycast(ray, out hit, float.MaxValue, layer))
+                //{
+                //    return hit;
+                //}
+            }
+        }
+        return null;
+    }
+
     // Refactored ControlPosition with smaller responsibilities, early exits, and clearer flow
     void ControlPosition(float movementDelta, float deltaTime)
     {
@@ -300,10 +333,11 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
         }
 
         // 4. Finalize position using NavMesh sampling
-        var finalPos = SampleNavMesh(nextPos2D, targetY);
+        var finalPos = SampleNavMesh(nextPos2D, positions[0].y);
         //Debug.DrawLine(transform.position, new Vector3(transform.position.x, targetY, transform.position.z), Color.yellow);
         transform.localPosition = finalPos;
-        transform.position = new Vector3(transform.position.x, targetY, transform.position.z);
+        Vector3 finalWorldPos = new Vector3(transform.position.x, targetY, transform.position.z);
+        transform.position = finalWorldPos;
     }
 
     public static bool CapsuleCastMatchesCollider(
@@ -466,6 +500,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
 
     Vector3 SampleNavMesh(Vector2 pos2D, float y)
     {
+        // TODO make proper world postion!
         var worldPos = new Vector3(pos2D.x, y, pos2D.y);
         if (NavMesh.SamplePosition(worldPos, out var hit, 0.5f, GetAreaMask()) && false)
             return hit.position;

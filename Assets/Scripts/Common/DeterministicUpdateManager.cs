@@ -138,6 +138,9 @@ public class DeterministicUpdateManager : MonoBehaviour
     // **Use a list array instead of a dictionary**
     private readonly List<IDeterministicUpdate>[] categorizedObjects = new List<IDeterministicUpdate>[64];
 
+    // **Use a list array instead of a dictionary**
+    private readonly List<IDeterministicUpdate>[] categorizedPostPhysicsObjects = new List<IDeterministicUpdate>[64];
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -188,6 +191,8 @@ public class DeterministicUpdateManager : MonoBehaviour
 
                 timer.Update(FixedStep);
                 Physics.Simulate(FixedStep);
+                
+                PostPhysicsUpdate(FixedStep, tickCount);
 
                 elapsedTime += FixedStep;
                 tickCount++;
@@ -253,6 +258,21 @@ public class DeterministicUpdateManager : MonoBehaviour
         }
     }
 
+    private void PostPhysicsUpdate(float deltaTime, ulong tickID)
+    {
+        for (int i = 0; i < categorizedPostPhysicsObjects.Length; i++)
+        {
+            var objList = categorizedPostPhysicsObjects[i];
+            if (objList != null)
+            {
+                for (int j = 0; j < objList.Count; j++)
+                {
+                    objList[j].DeterministicUpdate(deltaTime, tickCount);
+                }
+            }
+        }
+    }
+
     public void Register<T>(T obj) where T : IDeterministicUpdate
     {
         int typeIndex = TypeIndex.GetIndex<T>();
@@ -262,6 +282,15 @@ public class DeterministicUpdateManager : MonoBehaviour
         categorizedObjects[typeIndex].Add(obj);
     }
 
+    public void RegisterPostPhysics<T>(T obj) where T : IDeterministicUpdate
+    {
+        int typeIndex = TypeIndex.GetIndex<T>();
+
+        // Ensure list exists
+        categorizedPostPhysicsObjects[typeIndex] ??= new List<IDeterministicUpdate>();
+        categorizedPostPhysicsObjects[typeIndex].Add(obj);
+    }
+
     public void Unregister<T>(T obj) where T : IDeterministicUpdate
     {
         int typeIndex = TypeIndex.GetIndex<T>();
@@ -269,6 +298,16 @@ public class DeterministicUpdateManager : MonoBehaviour
         if (categorizedObjects[typeIndex] != null)
         {
             categorizedObjects[typeIndex].Remove(obj);
+        }
+    }
+
+    public void UnregisterPostPhysics<T>(T obj) where T : IDeterministicUpdate
+    {
+        int typeIndex = TypeIndex.GetIndex<T>();
+
+        if (categorizedPostPhysicsObjects[typeIndex] != null)
+        {
+            categorizedPostPhysicsObjects[typeIndex].Remove(obj);
         }
     }
 

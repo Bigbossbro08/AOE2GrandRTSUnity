@@ -45,6 +45,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   attackSprite: 
+  lineOfSight: 0
   attackRange: 0
   attackDelay: 0
   currentAttackDelay: 0
@@ -66,7 +67,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &3860204706865065482
 Transform:
   m_ObjectHideFlags: 0
@@ -630,10 +631,40 @@ MonoBehaviour:
   unitTypeComponent: {fileID: 6412636851807375680}
   aiModule: {fileID: 5196839320851393636}
   aiTransformHolder: {fileID: 9174888504552720271}
-  defaultModule: 1
+  aiController:
+    context:
+      self: {fileID: 0}
+      target: {fileID: 0}
+      initial:
+        x: 0
+        y: 0
+        z: 0
+      destination:
+        x: 0
+        y: 0
+        z: 0
+      combatComponent: {fileID: 0}
+    aiStackVisualized: []
+    enabled: 0
   DeterministicVisualUpdater: {fileID: 1962381057880631117}
   standSprite: idle_archer
   walkSprite: move_archer
+  shipData:
+    isShipMode: 0
+    transform: {fileID: 0}
+    movableUnit: {fileID: 0}
+    shipDeck: {fileID: 0}
+    rigidbody: {fileID: 0}
+    navMeshSurface: {fileID: 0}
+    navMeshLinks: []
+    isDocked: 0
+    unitsOnShip: []
+    ownPlayerCount: 0
+    dockedProp: {fileID: 0}
+    navMeshObstacle: {fileID: 0}
+    selectionCollider: {fileID: 0}
+    targetBoardedShip: {fileID: 0}
+    boardedShipHandler: {fileID: 0}
   meshCollider: {fileID: 0}
 --- !u!114 &9152001189729917415
 MonoBehaviour:
@@ -679,7 +710,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 0
+  m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 112

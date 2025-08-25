@@ -6,6 +6,7 @@ using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.Pool;
 using static CustomSpriteLoader;
 using static PathfinderTest;
@@ -43,8 +44,15 @@ public class UnitManager : MonoBehaviour
         {
             [JsonProperty("graphics")]
             public string graphics = null;
+
+            [JsonProperty("collision")]
+            public CollisionData collisionData = null;
+            
+            [JsonProperty("navmesh_obstacle_data")]
+            public NavMeshObstacleData navMeshObstacleData = null;
         }
 
+        [System.Serializable]
         public class ProjectileUnit
         {
             [JsonProperty("type")]
@@ -55,6 +63,9 @@ public class UnitManager : MonoBehaviour
 
             [JsonProperty("projectile_speed")]
             public float? projectile_speed = 5.0f;
+
+            [JsonProperty("graphics")]
+            public string graphics = null;
         }
 
         public class CombatActionEvent
@@ -115,6 +126,26 @@ public class UnitManager : MonoBehaviour
         }
 
         [System.Serializable]
+        public class NavMeshObstacleData
+        {
+            // For Capsule or Sphere
+            [JsonProperty("radius")]
+            public float? radius = 0.14f;
+
+            // For Capsule
+            [JsonProperty("height")]
+            public float? height = 0.54f;
+
+            // For Offset
+            [JsonProperty("offset")]
+            public CommonStructures.SerializableVector3? offset;
+
+            // For Box
+            [JsonProperty("size3d")]
+            public CommonStructures.SerializableVector3? size3d;
+        }
+
+        [System.Serializable]
         public class CollisionData
         {
             // For Convex Mesh
@@ -132,6 +163,14 @@ public class UnitManager : MonoBehaviour
             // For Capsule
             [JsonProperty("height")]
             public float? height = 0.54f;
+
+            // For Offset
+            [JsonProperty("offset")]
+            public CommonStructures.SerializableVector3? offset;
+
+            // For Box
+            [JsonProperty("size3d")]
+            public CommonStructures.SerializableVector3? size3d;
         }
 
         [System.Serializable]
@@ -192,6 +231,9 @@ public class UnitManager : MonoBehaviour
         [JsonProperty("corpse")]
         public string corpse = "archer_corpse";
 
+        [JsonProperty("dismounted_unit")]
+        public string dismounted_unit = null;
+
         [JsonProperty("ship_data")]
         public ShipData ship_data = null;
 
@@ -212,7 +254,7 @@ public class UnitManager : MonoBehaviour
     private ObjectPool<MovableUnit> movableUnitPool;
     public ObjectPool<ShipUnit> shipUnitPool;
     private ObjectPool<DeadUnit> deadUnitPool;
-    public ObjectPool<ProjectileUnit> projectileUnitPool;
+    private ObjectPool<ProjectileUnit> projectileUnitPool;
     private ObjectPool<PropUnit> propUnitPool;
 
     Dictionary<ulong, PlayerData> players = new Dictionary<ulong, PlayerData>();
@@ -264,7 +306,7 @@ public class UnitManager : MonoBehaviour
         {
             players.Add(3, new PlayerData(3, playerColor));
         }
-        if (ColorUtility.TryParseHtmlString("#FFBF00", out playerColor))
+        if (ColorUtility.TryParseHtmlString("#ffbf00ff", out playerColor))
         {
             players.Add(4, new PlayerData(4, playerColor));
         }
@@ -272,15 +314,15 @@ public class UnitManager : MonoBehaviour
         {
             players.Add(5, new PlayerData(5, playerColor));
         }
-        if (ColorUtility.TryParseHtmlString("#BF00FF", out playerColor))
+        if (ColorUtility.TryParseHtmlString("#34006eff", out playerColor))
         {
             players.Add(6, new PlayerData(6, playerColor));
         }
-        if (ColorUtility.TryParseHtmlString("#0080FF", out playerColor))
+        if (ColorUtility.TryParseHtmlString("#ff89dcff", out playerColor))
         {
             players.Add(7, new PlayerData(7, playerColor));
         }
-        if (ColorUtility.TryParseHtmlString("#4000FF", out playerColor))
+        if (ColorUtility.TryParseHtmlString("#520018ff", out playerColor))
         {
             playerColor = Color.grey;
             players.Add(8, new PlayerData(8, playerColor));
@@ -293,6 +335,7 @@ public class UnitManager : MonoBehaviour
 
     }
 
+    #region PropUnit
     public PropUnit GetPropUnitFromPool(System.Action<Unit> PreSpawnAction = null)
     {
         this.PreSpawnAction = PreSpawnAction;
@@ -338,7 +381,9 @@ public class UnitManager : MonoBehaviour
 
         Destroy(unit);
     }
+    #endregion
 
+    #region DeadUnit
     private DeadUnit _SpawnDeadUnit()
     {
         DeadUnit deadUnit = Instantiate(deadUnitPrefab);
@@ -381,6 +426,7 @@ public class UnitManager : MonoBehaviour
         }
         Destroy(unit);
     }
+    #endregion
 
     #region Ship
     private ShipUnit SpawnShipUnit()
@@ -489,9 +535,31 @@ public class UnitManager : MonoBehaviour
     #endregion
 
     #region ProjectileUnit
+
+    public ProjectileUnit GetProjectileUnitFromPool(System.Action<Unit> PreSpawnAction = null)
+    {
+        this.PreSpawnAction = PreSpawnAction;
+        return projectileUnitPool.Get();
+    }
+
+    public void ReleaseProjectileUnitFromPool(PropUnit unit)
+    {
+        propUnitPool.Release(unit);
+    }
+
     private void GetProjectileUnitFromPool(ProjectileUnit unit)
     {
+        PreSpawnAction?.Invoke(unit);
         unit.gameObject.SetActive(true);
+
+        UnitManager.UnitJsonData.ProjectileUnit projectileUnitData = UnitManager.Instance.LoadProjectileJsonData(unit.unitDataName);
+        if (projectileUnitData != null)
+        {
+            unit.spriteName = projectileUnitData.graphics;
+            unit.SetVisual(unit.spriteName);
+        }
+
+        PreSpawnAction = null;
     }
 
     private ProjectileUnit SpawnProjectileUnit()

@@ -21,6 +21,8 @@ public class CustomSpriteLoader : MonoBehaviour
     [System.Serializable]
     public class SpriteSheet
     {
+        [JsonProperty("layer")]
+        public int? layer = null;
         public bool isLooping;
         public float rotation_offset;
         public float height;
@@ -32,6 +34,7 @@ public class CustomSpriteLoader : MonoBehaviour
     [System.Serializable]
     public class SpriteReturnData {
         public bool isLooping;
+        public int? layer;
         public float rotation_offset = 0.0f;
         public float height;
         public float duration;
@@ -237,6 +240,7 @@ public class CustomSpriteLoader : MonoBehaviour
                 texture,
                 maskTexture
             );
+            result.layer = metadata.layer;
 
             spriteDictionary.Add(file, result);
             return result;

@@ -11,7 +11,26 @@ public class TestCoroutine : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(SetupEnemyShip());
+        //DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(SetupEnemyShip());
+        if (MapLoader.Instance.LoadMap("scenario/scenario1"))
+        {
+            Debug.Log("Map load was successful");
+
+            //System.Action<Unit> PreSpawnAction = (unit) =>
+            //{
+            //    Vector3 pos = new Vector3(82.5856704711914f, 6.018640995025635f, 27.12664031982422f);
+            //    pos /= 2;
+            //    unit.playerId = 1;
+            //    unit.transform.position = pos;
+            //    unit.unitDataName = "building_units\\house_RO_2";
+            //};
+            //
+            //UnitManager.Instance.GetPropUnitFromPool(PreSpawnAction);
+        }
+        else
+        {
+            Debug.LogError("Map load failed");
+        }
     }
 
     IEnumerator<IDeterministicYieldInstruction> SetupEnemyShip()

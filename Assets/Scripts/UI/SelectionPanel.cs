@@ -17,6 +17,20 @@ public class SelectionPanel : MonoBehaviour
 
     [SerializeField] private Material circleMaterial;
 
+    public static SelectionPanel Instance;
+
+    void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(this);
+        }
+        else
+        {
+            Instance = this;
+        }
+    }
+
     private Mesh circleQuadMesh;
 
     public Mesh GetCircleQuadMesh()

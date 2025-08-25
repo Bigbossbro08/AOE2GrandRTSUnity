@@ -8,6 +8,7 @@ using Unity.VisualScripting;
 using static Utilities;
 using System.Linq;
 using UnityEngine.EventSystems;
+using Assimp.Unmanaged;
 
 public class SelectionController : MonoBehaviour
 {
@@ -98,12 +99,12 @@ public class SelectionController : MonoBehaviour
     public static RaycastHit? FindProperHit(Vector3 targetPosition, int navAreaMask)
     {
         int layer = ~(1 << 2 | 1 << 3 | 1 << 6 | 1 << 30);
-        Ray ray = new Ray(targetPosition + Vector3.up * 200, Vector3.down * 400);// Camera.main.ScreenPointToRay(Input.mousePosition);
+        Ray ray = new Ray(targetPosition + Vector3.up * 100, Vector3.down * 200);// Camera.main.ScreenPointToRay(Input.mousePosition);
         if (Physics.Raycast(ray, out RaycastHit hit, float.MaxValue, layer))
         {
             if (NavMesh.SamplePosition(hit.point, out NavMeshHit navHit, 20f, navAreaMask))
             {
-                ray = new Ray(navHit.position + Vector3.up * 200, Vector3.down * 400);
+                ray = new Ray(navHit.position + Vector3.up * 100, Vector3.down * 200);
                 RaycastHit[] hits = Physics.RaycastAll(ray, float.MaxValue, layer);
                 foreach (var h in hits)
                 {
@@ -113,8 +114,8 @@ public class SelectionController : MonoBehaviour
                         {
                             continue;
                         }
+                        return h;
                     }
-                    return h;
                 }
                 //if (Physics.Raycast(ray, out hit, float.MaxValue, layer))
                 //{
@@ -167,7 +168,7 @@ public class SelectionController : MonoBehaviour
             }
 
 
-            if (ids.Count > 1)
+            if (ids.Count > 0)
             {
                 DeleteUnitsCommand deleteUnitsCommand = new DeleteUnitsCommand();
                 deleteUnitsCommand.action = DeleteUnitsCommand.commandName;
@@ -223,22 +224,142 @@ public class SelectionController : MonoBehaviour
         isDragging = false;
     }
 
+    bool checkForDoubleTap = false;
+    float checkForDoubleTapTimer = 0.0f;
+    GameObject doubleTapRefObj = null;
+
+    [SerializeField] float doubleClickThreshold = 0.25f; // time window in seconds
+
     void HandleSelectionInput()
     {
-        if (Input.GetMouseButtonDown(0)) // Left click to start selection
+        if (Input.GetMouseButtonDown(0)) // Left click pressed
         {
+            int layerMask = 1 << 6; // proper layer mask
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (Physics.Raycast(ray, out RaycastHit hit, 100000, layerMask))
+            {
+                GameObject clickedObj = hit.transform.gameObject;
+
+                // --- double click check ---
+                if (checkForDoubleTap && clickedObj == doubleTapRefObj && checkForDoubleTapTimer < doubleClickThreshold)
+                {
+                    // Success -> Double click detected!
+                    SelectSimilarVisibleObjects(clickedObj);
+                    checkForDoubleTap = false;
+                    return;
+                }
+
+                // First click
+                doubleTapRefObj = clickedObj;
+                checkForDoubleTap = true;
+                checkForDoubleTapTimer = 0.0f;
+                return;
+            }
+
+            // if raycast didn't hit -> start drag selection
             startScreenPos = Input.mousePosition;
+            endScreenPos = startScreenPos;
             isDragging = true;
         }
-        else if (Input.GetMouseButtonUp(0)) // Release to finish selection
+        else if (Input.GetMouseButtonUp(0)) // mouse released
         {
             EndDragging();
+        }
+
+        // If we're in "waiting for double tap" mode, update timer
+        if (checkForDoubleTap)
+        {
+            checkForDoubleTapTimer += Time.deltaTime;
+            if (checkForDoubleTapTimer > doubleClickThreshold)
+            {
+                // Time ran out -> reset
+                checkForDoubleTap = false;
+                doubleTapRefObj = null;
+            }
         }
 
         if (isDragging)
         {
             endScreenPos = Input.mousePosition;
         }
+    }
+
+    void SelectSimilarVisibleObjects(GameObject referenceObj)
+    {
+        string referenceTag = referenceObj.tag;
+        // or referenceObj.GetComponent<Unit>().unitType, etc.
+
+        MovableUnit referenceUnit = referenceObj.GetComponent<MovableUnit>();
+        if (referenceUnit == null)
+        {
+            referenceUnit = referenceObj.GetComponentInParent<MovableUnit>();
+        }
+
+        Plane[] planes = GeometryUtility.CalculateFrustumPlanes(Camera.main);
+        //List<GameObject> selectedObjects = new List<GameObject>();
+        List<Unit> selectedUnits = new List<Unit>();
+
+        foreach (var obj in GameObject.FindGameObjectsWithTag(referenceTag))
+        {
+            MovableUnit controllableUnit = obj.GetComponentInParent<MovableUnit>();
+            if (controllableUnit == null)
+            {
+                controllableUnit = obj.GetComponent<MovableUnit>();
+            }
+            if (controllableUnit == null)
+            {
+                continue;
+            }
+            if (referenceUnit && referenceUnit.playerId != controllableUnit.playerId)
+            {
+                continue;
+            }
+            if (referenceUnit && controllableUnit.unitDataName != referenceUnit.unitDataName)
+            {
+                continue;
+            }
+            
+            Renderer rend = obj.GetComponentInChildren<Renderer>();
+            if (rend != null)
+            {
+                if (GeometryUtility.TestPlanesAABB(planes, rend.bounds))
+                {
+                    //selectedObjects.Add(obj);
+                    selectedUnits.Add(referenceUnit);
+                }
+            }
+        }
+
+        MovableUnit selectedShip = null;
+
+        List<Unit> filteredUnits = new List<Unit>();
+
+        for (int i = 0; i < selectedUnits.Count && i < 60; i++)
+        {
+            var unit = selectedUnits[i];
+            if (unit.GetType() == typeof(MovableUnit))
+            {
+                MovableUnit movableUnit = (MovableUnit)unit;
+                if (movableUnit.IsShip())
+                {
+                    selectedShip = movableUnit;
+                    continue;
+                }
+                //if (movableUnit.movementComponent.IsOnShip()) continue;
+                filteredUnits.Add(unit);
+            }
+        }
+
+        if (filteredUnits.Count == 0 && selectedShip != null)
+        {
+            filteredUnits.Add(selectedShip);
+        }
+
+        // Handle your selection system here
+        //Debug.Log($"Selected {selectedObjects.Count} {referenceTag} objects.");
+
+        selectionPanel.SetupUnitSelection(filteredUnits);
+        commandPanelUI.FigureoutPanelFromSelection(filteredUnits);
     }
 
     bool CheckColliderTag(Collider hit, string tag)

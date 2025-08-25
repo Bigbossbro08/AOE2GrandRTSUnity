@@ -12,7 +12,8 @@ namespace CoreGameUnitAI
         private MovableUnit self = null;
 
         public SearchForEnemy(MovableUnit self, float lineOfSight = 5.0f, float maxTime = 0.5f) {
-            this.timer = 0.0f;
+            // We want to call timer to search immediately
+            this.timer = maxTime;
             this.lineOfSight = lineOfSight;
             this.maxTime = maxTime;
             this.self = self;
@@ -74,6 +75,6 @@ namespace CoreGameUnitAI
             return target != null;
         }
 
-        public bool TimedOut => timer > maxTime;
+        public bool TimedOut => timer >= maxTime;
     }
 }

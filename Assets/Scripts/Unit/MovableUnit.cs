@@ -281,18 +281,18 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             if (!string.IsNullOrEmpty(unitData.ship_data.dockedProp))
             {
                 dockedPropName = unitData.ship_data.dockedProp;
-                UnitManager.UnitJsonData.Prop propData = UnitManager.Instance.LoadPropJsonData(dockedPropName);
-                if (propData != null)
+                //UnitManager.UnitJsonData.Prop propData = UnitManager.Instance.LoadPropJsonData(dockedPropName);
+                System.Action<Unit> dockSpawnAction = (unit) =>
                 {
-                    System.Action<Unit> dockSpawnAction = (unit) =>
-                    {
-                        PropUnit propUnit = unit as PropUnit;
-                        propUnit.unitDataName = dockedPropName;
-                        propUnit.transform.SetPositionAndRotation(transform.position, transform.rotation);
-                        propUnit.spriteName = propData.graphics;
-                    };
-                    dockedProp = UnitManager.Instance.GetPropUnitFromPool(dockSpawnAction);
-                }
+                    PropUnit propUnit = unit as PropUnit;
+                    propUnit.unitDataName = dockedPropName;
+                    propUnit.transform.SetPositionAndRotation(transform.position, transform.rotation);
+                    //propUnit.spriteName = propData.graphics;
+                };
+                dockedProp = UnitManager.Instance.GetPropUnitFromPool(dockSpawnAction);
+                //if (propData != null)
+                //{
+                //}
             }
 
             movableUnit.movementComponent.SetState(MovementComponent.MovementFlag.IsWater);
@@ -434,6 +434,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                         propUnit.unitDataName = dockedPropName;
                         propUnit.transform.SetPositionAndRotation(transform.position, transform.rotation);
                         propUnit.spriteName = propData.graphics;
+                        propUnit.playerId = movableUnit.playerId;
                     };
                     dockedProp = UnitManager.Instance.GetPropUnitFromPool(dockSpawnAction);
                 }
@@ -967,12 +968,14 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             {
                 if (DeterministicVisualUpdater)
                 {
+                    DeterministicVisualUpdater.CustomDeterministicVisualUpdate = null;
                     DeterministicVisualUpdater.SetSpriteName(standSprite, true);
                     DeterministicVisualUpdater.PlayOrResume(true);
                     DeterministicVisualUpdater.playerId = playerId;
                     DeterministicVisualUpdater.RefreshVisuals();
                 }
             };
+            DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
             //if (!IsShip())
             //{
             //    defaultModule = UnitAIModule.AIModule.BasicAttackAIModule;
@@ -987,7 +990,6 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             aiController.DefaultAI = new IdleAI(aiController);
             aiController.ClearAI();
             aiController.enabled = true;
-            DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
         }
     }
 
