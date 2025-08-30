@@ -25,7 +25,6 @@ public class MoveToTargetAI : IAIController
     protected UnitAIController controller = null;
     public MoveToTargetAI(UnitAIController controller, MovableUnit target)
     {
-        Debug.Log("Setting up MoveToTarget");
         this.controller = controller;
         this.controller.context.target = target;
         this.desiredState = State.MovingTowardsTarget;

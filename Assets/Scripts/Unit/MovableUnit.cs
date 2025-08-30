@@ -993,6 +993,26 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
         }
     }
 
+    public void ResetUnitWithoutMovementStop()
+    {
+        if (movementComponent)
+        {
+            //movementComponent.Stop(stopPhysicsToo);
+            movementComponent.SetTargetToIgnore(null);
+        }
+        if (actionComponent)
+        {
+            actionComponent.StopAction();
+            foreach (var action in actionComponent.actions)
+            {
+                if (action.eventId == UnitEventHandler.EventID.OnAttack && action.parameters.Length == 3)
+                {
+                    action.parameters[1] = (ulong)0;
+                }
+            }
+        }
+    }
+
     public void ResetUnit(bool avoidActionReset = false, bool stopPhysicsToo = false)
     {
         if (movementComponent)

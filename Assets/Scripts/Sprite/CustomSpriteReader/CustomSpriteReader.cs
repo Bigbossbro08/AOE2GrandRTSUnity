@@ -34,6 +34,18 @@ public class CustomSpriteReader : MonoBehaviour
         //StartCoroutine(PlayAnimation());
     }
 
+    public Sprite GetCurrentSprite()
+    {
+        if (_renderer == null) return null;
+        if (_renderer.sprite) return _renderer.sprite;
+        return null;
+    }
+
+    public SpriteRenderer GetSpriteRenderer()
+    {
+        return _renderer;
+    }
+
     void Initialize(string spriteName)
     {
         this.spriteName = spriteName;

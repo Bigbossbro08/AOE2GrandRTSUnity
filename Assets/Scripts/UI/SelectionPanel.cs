@@ -10,7 +10,7 @@ public class SelectionPanel : MonoBehaviour
     public Transform content;                   // Grid content
     private int activeButtonCount = 0;
 
-    private List<CommandButton> selectionButtons = new List<CommandButton>(61);
+    private List<SelectionButton> selectionButtons = new List<SelectionButton>(61);
 
     private List<Unit> selectedUnits = new List<Unit>();
     private List<MovableUnit> movableUnits = new List<MovableUnit>();
@@ -67,6 +67,8 @@ public class SelectionPanel : MonoBehaviour
     public float circleSize = 2f;
     public float height = 0.01f;
 
+    public Action<List<Unit>> OnSelectionChanged { get; internal set; }
+
     void OnPreRender()
     {
         if (circleMaterial == null || selectedUnits == null) return;
@@ -86,6 +88,28 @@ public class SelectionPanel : MonoBehaviour
         }
     }
 
+    private void Update()
+    {
+        //foreach (var selectionButton in selectionButtons)
+        //{
+        //    if (selectionButton.gameObject.activeSelf == false) continue;
+        //    Unit unit = selectionButton.unitReference;
+        //    //if (unit == null)
+        //    //{
+        //    //    UpdateGridLayout();
+        //    //    return;
+        //    //}
+        //    if (unit && unit.GetType() == typeof(MovableUnit))
+        //    {
+        //        MovableUnit controllableUnit = unit as MovableUnit;
+        //        float health = controllableUnit.statComponent.GetHealth();
+        //        float maxHealth = controllableUnit.statComponent.GetMaxHealth();
+        //        float value = health / maxHealth;
+        //        selectionButton.hpBarSlider.value = value;
+        //    }
+        //}
+    }
+
     void InitializeSelectionButtons()
     {
         int counter = 0;
@@ -93,7 +117,11 @@ public class SelectionPanel : MonoBehaviour
         foreach (Transform child in content)
         {
             child.gameObject.name = $"Selection Button: {counter}";
-            CommandButton button = child.GetComponent<CommandButton>();
+            SelectionButton button = child.GetComponent<SelectionButton>();
+            if (button.hpBarSlider == null)
+            {
+                button.hpBarSlider = button.GetComponentInChildren<Slider>();
+            }
             selectionButtons.Add(button);
             if (button.gameObject.activeSelf)
             {
@@ -104,7 +132,7 @@ public class SelectionPanel : MonoBehaviour
         this.activeButtonCount = activeButtonCount;
     }
 
-    void DeactivateButton(CommandButton button, bool checkSelectionCount = true)
+    void DeactivateButton(SelectionButton button, bool checkSelectionCount = true)
     {
         button.gameObject.SetActive(false);
         button.onClick.RemoveAllListeners();
@@ -134,6 +162,12 @@ public class SelectionPanel : MonoBehaviour
     {
         ClearSelectionButtons();
 
+        if (units.Count == 0)
+        {
+            OnSelectionChanged?.Invoke(selectedUnits);
+            return;
+        }
+
         for (int i = 0; i < units.Count && i < 60; i++)
         {
             Unit unit = units[i];
@@ -155,7 +189,8 @@ public class SelectionPanel : MonoBehaviour
 
                 // Capture variables into local scope
                 Unit capturedUnit = unit;
-                CommandButton capturedBtn = btn;
+                SelectionButton capturedBtn = btn;
+                capturedBtn.unitReference = capturedUnit;
 
                 // Define the death callback
                 Action<ulong> deathCallback = null;
@@ -188,6 +223,7 @@ public class SelectionPanel : MonoBehaviour
             }
         }
         UpdateGridLayout();
+        OnSelectionChanged?.Invoke(selectedUnits);
     }
 
     int GetActiveSelectedCount()

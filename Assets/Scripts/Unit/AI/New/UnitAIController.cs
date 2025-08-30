@@ -213,6 +213,7 @@ namespace CoreGameUnitAI
             if (aiControllerParameter.newAI == null)
             {
                 NativeLogger.Warning("SetAI was called with null. Ignoring.");
+                aiControllerParameter = null;
                 return true;
             }
 

@@ -13,6 +13,8 @@ public class CommandButton : Button
         public Action Callback; // Action to execute on click
     }
 
+    public Slider hpBarSlider;
+
     public void Setup(Command command)
     {
         image.sprite = command.Icon;
@@ -32,13 +34,13 @@ public class CommandButton : Button
 
     public override void OnPointerDown(PointerEventData eventData)
     {
-        Debug.Log("Pointer is down");
+        //Debug.Log("Pointer is down");
         base.OnPointerDown(eventData);
     }
 
     public override void OnPointerEnter(PointerEventData eventData)
     {
-        Debug.Log("Pointer has entered");
+        //Debug.Log("Pointer has entered");
         base.OnPointerEnter(eventData);
     }
 }

@@ -32,7 +32,7 @@ public class SpriteManager : MonoBehaviour
 
     ObjectPool<UnitVisual> unitVisualPool;
     [SerializeField] private UnitVisual unitVisualPrefab;
-    private Dictionary<ulong, UnitVisual> activeVisuals = new Dictionary<ulong, UnitVisual>();
+    public Dictionary<ulong, UnitVisual> activeVisuals = new Dictionary<ulong, UnitVisual>();
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()

@@ -45,7 +45,8 @@ public class MoveToPositionAI : IAIController
     {
         MovableUnit self = controller.GetSelf();
         MovementComponent movementComponent = self.movementComponent;
-        self.ResetUnit(true);
+        //self.ResetUnit(true);
+        self.ResetUnitWithoutMovementStop();
         movementComponent.crowdID = crowdId;
         desiredState = State.WaitingForPath;
         currentState = State.MoveTowardsPoint;

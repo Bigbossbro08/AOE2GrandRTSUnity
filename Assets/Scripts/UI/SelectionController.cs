@@ -117,10 +117,6 @@ public class SelectionController : MonoBehaviour
                         return h;
                     }
                 }
-                //if (Physics.Raycast(ray, out hit, float.MaxValue, layer))
-                //{
-                //    return hit;
-                //}
             }
         }
         return null;
@@ -217,82 +213,227 @@ public class SelectionController : MonoBehaviour
         HandleOrderCommand();
     }
 
+    // Check if a sprite's screen bounds overlap with the selection rect
+    bool IsSpriteInSelection(Rect selectionRect, SpriteRenderer spriteRenderer, Camera cam)
+    {
+        Bounds worldBounds = spriteRenderer.bounds;
+        Vector3 screenMin = cam.WorldToScreenPoint(worldBounds.min);
+        Vector3 screenMax = cam.WorldToScreenPoint(worldBounds.max);
+        Rect spriteScreenRect = Rect.MinMaxRect(screenMin.x, screenMin.y, screenMax.x, screenMax.y);
+        return selectionRect.Overlaps(spriteScreenRect);
+    }
+
+    bool IsPointInSprite(Vector2 point, SpriteRenderer spriteRenderer, Camera cam)
+    {
+        Bounds worldBounds = spriteRenderer.bounds;
+        Vector3 screenMin = cam.WorldToScreenPoint(worldBounds.min);
+        Vector3 screenMax = cam.WorldToScreenPoint(worldBounds.max);
+
+        // Create a rect from the sprite's screen bounds
+        Rect spriteScreenRect = Rect.MinMaxRect(
+            Mathf.Min(screenMin.x, screenMax.x),
+            Mathf.Min(screenMin.y, screenMax.y),
+            Mathf.Max(screenMin.x, screenMax.x),
+            Mathf.Max(screenMin.y, screenMax.y)
+        );
+
+        return spriteScreenRect.Contains(point);
+    }
+
     void EndDragging()
     {
         endScreenPos = Input.mousePosition;
-        SelectObjects();
+        
+        // Convert screen coordinates to a normalized rect
+        float x = Mathf.Min(startScreenPos.x, endScreenPos.x);
+        float y = Mathf.Min(startScreenPos.y, endScreenPos.y);
+        float width = Mathf.Abs(endScreenPos.x - startScreenPos.x);
+        float height = Mathf.Abs(endScreenPos.y - startScreenPos.y);
+
+        List<Unit> selectedUnits = new List<Unit>();
+        Rect selectionRect = new Rect(x, y, width, height);
+        //SelectObjects();
+        var activeVisuals = SpriteManager.Instance.activeVisuals;
+        foreach (var vis in activeVisuals)
+        {
+            SpriteRenderer spriteRenderer = vis.Value.spriteReader.GetSpriteRenderer();
+            if (IsSpriteInSelection(selectionRect, spriteRenderer, Camera.main))
+            {
+                selectedUnits.Add(vis.Value.core);
+            }
+        }
+        List<Unit> filteredUnits = selectedUnits;
+        selectionPanel.SetupUnitSelection(filteredUnits);
+        commandPanelUI.FigureoutPanelFromSelection(filteredUnits);
         isDragging = false;
+
+        startScreenPos = Input.mousePosition;
+    }
+    
+    private GameObject GetObjectUnderMouse()
+    {
+        int layerMask = 1 << 6; // Layer 6
+        //Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        Vector3 screenPoint = Input.mousePosition;// Camera.main.WorldToScreenPoint(Input.mousePosition);
+        var activeVisuals = SpriteManager.Instance.activeVisuals;
+        GameObject retObj = null;
+        foreach (var vis in activeVisuals)
+        {
+            SpriteRenderer spriteRenderer = vis.Value.spriteReader.GetSpriteRenderer();
+            if (IsPointInSprite(screenPoint, spriteRenderer, Camera.main))
+            {
+                retObj = vis.Value.core.gameObject;
+                if (selectedObject == retObj)
+                {
+                    continue;
+                }
+                break;
+            }
+        }
+        
+        //if (Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, layerMask))
+        //{
+        //    return hit.transform.gameObject;
+        //}
+
+        return retObj;
     }
 
-    bool checkForDoubleTap = false;
-    float checkForDoubleTapTimer = 0.0f;
-    GameObject doubleTapRefObj = null;
 
-    [SerializeField] float doubleClickThreshold = 0.25f; // time window in seconds
+    [SerializeField] private float mouseDownTime = 0.0f;
+    [SerializeField] private float doubleClickTime = 0.3f;
+    [SerializeField] private float dragThreshold = 5f; // In pixels
+    [SerializeField] private GameObject selectedObject = null;
+    [SerializeField] bool mouseButtonDown = false;
+    [SerializeField] bool startCheckForDoubleClick = false;
+    [SerializeField] bool doubleClickHappened = false;
+    //[SerializeField] bool draggingBehavior = false;
+
+    void UpdateMouseButton()
+    {
+        if (startCheckForDoubleClick)
+        {
+            if (Time.time - mouseDownTime > doubleClickTime)
+            {
+                startCheckForDoubleClick = false;
+            }
+        }
+        
+        if (Input.GetMouseButtonDown(0))
+        {
+            startScreenPos = Input.mousePosition;
+            if (startCheckForDoubleClick)
+            {
+                HandleDoubleClick();
+                startCheckForDoubleClick = false;
+                doubleClickHappened = true;
+            }
+            mouseButtonDown = true;
+        }
+
+        if (mouseButtonDown)
+        {
+            Vector2 mouseDownPosition = startScreenPos;
+            endScreenPos = Input.mousePosition;
+
+            // Check if we should start dragging
+            if (Vector2.Distance(mouseDownPosition, endScreenPos) > dragThreshold)
+            {
+                isDragging = true;
+                doubleClickHappened = false;
+                startCheckForDoubleClick = false;
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0))
+        {
+            if (isDragging)
+            {
+                EndDragging();
+                isDragging = false;
+                startCheckForDoubleClick = false;
+                doubleClickHappened = false;
+            }
+            else
+            {
+                if (doubleClickHappened)
+                {
+                    doubleClickHappened = false;
+                }
+                else
+                {
+
+                    if (!startCheckForDoubleClick)
+                    {
+                        HandleSingleClick();
+                        startCheckForDoubleClick = true;
+                        mouseDownTime = Time.time;
+                    }
+                }
+            }
+
+            mouseButtonDown = false;
+        }
+    }
+
+    private void HandleSingleClick()
+    {
+        List<Unit> filteredUnits = new List<Unit>();
+        selectedObject = GetObjectUnderMouse();
+        if (selectedObject)
+        {
+            Debug.Log($"Single Click on {selectedObject.name}");
+
+            MovableUnit controllableUnit = selectedObject.GetComponentInParent<MovableUnit>();
+            if (controllableUnit == null)
+            {
+                controllableUnit = selectedObject.GetComponent<MovableUnit>();
+            }
+
+            if (controllableUnit)
+            {
+                filteredUnits.Add(controllableUnit);
+            }
+        }
+
+        selectionPanel.SetupUnitSelection(filteredUnits);
+        commandPanelUI.FigureoutPanelFromSelection(filteredUnits);
+    }
+
+    private void HandleDoubleClick()
+    {
+        if (selectedObject == null)
+        {
+            return;
+        }
+        Debug.Log($"Double Click on {selectedObject.name}");
+        SelectSimilarVisibleObjects(selectedObject);
+    }
 
     void HandleSelectionInput()
     {
-        if (Input.GetMouseButtonDown(0)) // Left click pressed
-        {
-            int layerMask = 1 << 6; // proper layer mask
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, 100000, layerMask))
-            {
-                GameObject clickedObj = hit.transform.gameObject;
-
-                // --- double click check ---
-                if (checkForDoubleTap && clickedObj == doubleTapRefObj && checkForDoubleTapTimer < doubleClickThreshold)
-                {
-                    // Success -> Double click detected!
-                    SelectSimilarVisibleObjects(clickedObj);
-                    checkForDoubleTap = false;
-                    return;
-                }
-
-                // First click
-                doubleTapRefObj = clickedObj;
-                checkForDoubleTap = true;
-                checkForDoubleTapTimer = 0.0f;
-                return;
-            }
-
-            // if raycast didn't hit -> start drag selection
-            startScreenPos = Input.mousePosition;
-            endScreenPos = startScreenPos;
-            isDragging = true;
-        }
-        else if (Input.GetMouseButtonUp(0)) // mouse released
-        {
-            EndDragging();
-        }
-
-        // If we're in "waiting for double tap" mode, update timer
-        if (checkForDoubleTap)
-        {
-            checkForDoubleTapTimer += Time.deltaTime;
-            if (checkForDoubleTapTimer > doubleClickThreshold)
-            {
-                // Time ran out -> reset
-                checkForDoubleTap = false;
-                doubleTapRefObj = null;
-            }
-        }
-
-        if (isDragging)
-        {
-            endScreenPos = Input.mousePosition;
-        }
+        UpdateMouseButton();
     }
 
     void SelectSimilarVisibleObjects(GameObject referenceObj)
     {
+        if (referenceObj == null)
+        {
+            return;
+        }
         string referenceTag = referenceObj.tag;
+        Debug.Log($"{referenceObj.name}");
         // or referenceObj.GetComponent<Unit>().unitType, etc.
 
         MovableUnit referenceUnit = referenceObj.GetComponent<MovableUnit>();
         if (referenceUnit == null)
         {
             referenceUnit = referenceObj.GetComponentInParent<MovableUnit>();
+        }
+        if (referenceUnit == null)
+        {
+
+            return;
         }
 
         Plane[] planes = GeometryUtility.CalculateFrustumPlanes(Camera.main);
@@ -310,24 +451,26 @@ public class SelectionController : MonoBehaviour
             {
                 continue;
             }
-            if (referenceUnit && referenceUnit.playerId != controllableUnit.playerId)
+            if (referenceUnit.playerId != controllableUnit.playerId)
             {
                 continue;
             }
-            if (referenceUnit && controllableUnit.unitDataName != referenceUnit.unitDataName)
+            if (controllableUnit.unitDataName != referenceUnit.unitDataName)
             {
                 continue;
             }
             
-            Renderer rend = obj.GetComponentInChildren<Renderer>();
-            if (rend != null)
-            {
-                if (GeometryUtility.TestPlanesAABB(planes, rend.bounds))
-                {
-                    //selectedObjects.Add(obj);
-                    selectedUnits.Add(referenceUnit);
-                }
-            }
+            //Renderer rend = obj.GetComponentInChildren<Renderer>();
+            //if (rend != null)
+            //{
+            //    if (GeometryUtility.TestPlanesAABB(planes, rend.bounds))
+            //    {
+            //        //selectedObjects.Add(obj);
+            //        selectedUnits.Add(referenceUnit);
+            //    }
+            //}
+            if (!selectedUnits.Contains(controllableUnit))
+                selectedUnits.Add(controllableUnit);
         }
 
         MovableUnit selectedShip = null;
@@ -356,7 +499,7 @@ public class SelectionController : MonoBehaviour
         }
 
         // Handle your selection system here
-        //Debug.Log($"Selected {selectedObjects.Count} {referenceTag} objects.");
+        Debug.Log($"Selected {filteredUnits.Count} {referenceTag} objects.");
 
         selectionPanel.SetupUnitSelection(filteredUnits);
         commandPanelUI.FigureoutPanelFromSelection(filteredUnits);
@@ -488,51 +631,6 @@ public class SelectionController : MonoBehaviour
         );
 
         position = center + Camera.main.transform.forward * (zSize / 2);
-    }
-
-    void TestSelection(GameObject testCube)
-    {
-        // Convert screen points to world positions
-        Vector3[] worldCorners = new Vector3[8];
-        worldCorners[0] = ScreenToWorldPoint(startScreenPos, Camera.main.nearClipPlane);
-        worldCorners[1] = ScreenToWorldPoint(new Vector2(endScreenPos.x, startScreenPos.y), Camera.main.nearClipPlane);
-        worldCorners[2] = ScreenToWorldPoint(endScreenPos, Camera.main.nearClipPlane);
-        worldCorners[3] = ScreenToWorldPoint(new Vector2(startScreenPos.x, endScreenPos.y), Camera.main.nearClipPlane);
-        worldCorners[4] = (worldCorners[0] + worldCorners[1]) / 2;
-        worldCorners[5] = (worldCorners[1] + worldCorners[2]) / 2;
-        worldCorners[6] = (worldCorners[2] + worldCorners[3]) / 2;
-        worldCorners[7] = (worldCorners[3] + worldCorners[0]) / 2;
-
-        DebugExtension.DebugWireSphere(worldCorners[0], Color.red, 0.2f);
-        DebugExtension.DebugWireSphere(worldCorners[1], Color.red, 0.2f);
-        DebugExtension.DebugWireSphere(worldCorners[2], Color.red, 0.2f);
-        DebugExtension.DebugWireSphere(worldCorners[3], Color.red, 0.2f);
-
-        DebugExtension.DebugWireSphere(worldCorners[4], Color.red, 0.2f);
-        DebugExtension.DebugWireSphere(worldCorners[5], Color.red, 0.2f);
-        DebugExtension.DebugWireSphere(worldCorners[6], Color.red, 0.2f);
-        DebugExtension.DebugWireSphere(worldCorners[7], Color.red, 0.2f);
-
-        // Create a selection box that extends into the scene
-        Vector3 center = (worldCorners[0] + worldCorners[2]) / 2;
-        DebugExtension.DebugWireSphere(center, Color.red, 0.2f);
-
-        float zSize = Camera.main.farClipPlane - Camera.main.nearClipPlane;
-
-        Vector3 size = new Vector3(
-            (worldCorners[0] - worldCorners[1]).magnitude,
-            (worldCorners[1] - worldCorners[2]).magnitude,
-            zSize
-        );
-
-        Quaternion rotation = Quaternion.Euler(30, -45, 0); // Quaternion.LookRotation(Camera.main.transform.forward, Vector3.up);
-
-        //Matrix4x4 matrix = new Matrix4x4();
-        //matrix.SetTRS(center, rotation, size);
-        testCube.transform.position = center + Camera.main.transform.forward * (zSize / 2);
-        testCube.transform.rotation = rotation;
-        testCube.transform.localScale = size;
-        //DebugExtension.DebugLocalCube(matrix, Vector3.one);
     }
 
     Vector3 ScreenToWorldPoint(Vector2 screenPos, float depth)
