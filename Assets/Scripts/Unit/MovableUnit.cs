@@ -1,22 +1,11 @@
 using Assimp;
 using Newtonsoft.Json;
-using NUnit.Framework;
-using NUnit.Framework.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.AI.Navigation;
 using UnityEngine;
 using UnityEngine.AI;
-using UnityEngine.UIElements;
-using static Codice.Client.Commands.WkTree.WorkspaceTreeNode;
-using static MovableUnit;
-using static PathfinderTest;
-using static PlasticPipe.PlasticProtocol.Client.ConnectionCreator.PlasticProtoSocketConnection;
-using static Unit;
-using static UnitManager.UnitJsonData;
-using static UnityEditor.Experimental.GraphView.GraphView;
-using static UnityEngine.GraphicsBuffer;
 
 [RequireComponent(typeof(MovementComponent))]
 public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad

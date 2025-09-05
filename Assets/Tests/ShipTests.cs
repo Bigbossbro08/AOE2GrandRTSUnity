@@ -170,7 +170,7 @@ public class ShipTests : BasePlayModeTest
             MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
             moveUnitsCommand.action = MoveUnitsCommand.commandName;
             moveUnitsCommand.unitIDs = unitIds;
-            moveUnitsCommand.position = enemy_ship.transform.position;
+            moveUnitsCommand.position = (CommonStructures.SerializableVector3)enemy_ship.transform.position;
             moveUnitsCommand.IsAttackMove = false;
             InputManager.Instance.SendInputCommand(moveUnitsCommand);
         }
@@ -188,7 +188,7 @@ public class ShipTests : BasePlayModeTest
             MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
             moveUnitsCommand.action = MoveUnitsCommand.commandName;
             moveUnitsCommand.unitIDs = unitIds;
-            moveUnitsCommand.position = playerShip.transform.position;
+            moveUnitsCommand.position = (CommonStructures.SerializableVector3)playerShip.transform.position;
             moveUnitsCommand.IsAttackMove = false;
             InputManager.Instance.SendInputCommand(moveUnitsCommand);
         }
@@ -217,7 +217,7 @@ public class ShipTests : BasePlayModeTest
             MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
             moveUnitsCommand.action = MoveUnitsCommand.commandName;
             moveUnitsCommand.unitIDs = new List<ulong>() { enemy_ship.id };
-            moveUnitsCommand.position = newCopiedPosition_0;
+            moveUnitsCommand.position = (CommonStructures.SerializableVector3)newCopiedPosition_0;
             moveUnitsCommand.IsAttackMove = false;
             InputManager.Instance.SendInputCommand(moveUnitsCommand);
 

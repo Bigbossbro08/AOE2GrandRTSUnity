@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -201,35 +202,86 @@ public class CustomSpriteLoader : MonoBehaviour
 
     public SpriteReturnData LoadSprite(string file)
     {
+        if (string.IsNullOrEmpty(file))
+        {
+            // Capture stack trace so you know where it came from
+            string trace = Environment.StackTrace;
+
+            NativeLogger.Error(
+                "[LoadSprite] ERROR: file argument is null or empty! " +
+                "This means someone called LoadSprite(null or \"\").\n" +
+                "Caller stack trace:\n" + trace
+            );
+
+            return null;
+        }
+
         SpriteReturnData spriteReturnData = null;
+
         try
         {
+            // Guard against null/empty input
+            if (string.IsNullOrEmpty(file))
+            {
+                NativeLogger.Error("[LoadSprite] ERROR: file argument is null or empty!");
+                return null;
+            }
+
+            // Check if already loaded
             if (spriteDictionary.ContainsKey(file))
             {
-                spriteReturnData = spriteDictionary[file];
-                return spriteReturnData;
+                NativeLogger.Log($"[LoadSprite] Sprite already cached for key: {file}");
+                return spriteDictionary[file];
             }
-            string path = Path.Combine(MapLoader.GetDataPath());
-            //string path = Path.Combine("E:\\repos\\AOE2GrandRTSUnityFiles\\", "new_format");
-            string jsonPath = Path.Combine(path, $"{file}.json");
-            SpriteSheet metadata = SpriteMetadata(jsonPath);
-            string pngPath = Path.Combine(path, $"{file}.png");
 
+            // Resolve base path
+            string path = Path.Combine(MapLoader.GetDataPath());
+            NativeLogger.Log($"[LoadSprite] DataPath resolved to: {path}, file key: {file}");
+
+            // Build JSON + PNG paths
+            string jsonPath = Path.Combine(path, $"{file}.json");
+            string pngPath = Path.Combine(path, $"{file}.png");
+            string pColorPath = Path.Combine(path, $"{file}_p.png");
+
+            // Verify file existence before loading
+            if (!File.Exists(jsonPath))
+                NativeLogger.Error($"[LoadSprite] JSON file not found: {jsonPath}");
+            if (!File.Exists(pngPath))
+                NativeLogger.Error($"[LoadSprite] PNG file not found: {pngPath}");
+            if (!File.Exists(pColorPath))
+                NativeLogger.Error($"[LoadSprite] Player color PNG not found: {pColorPath}");
+
+            // Load metadata
+            SpriteSheet metadata = SpriteMetadata(jsonPath);
+
+            // Load main texture
             Texture2D texture = SpriteImage(pngPath);
+            if (texture == null)
+            {
+                NativeLogger.Error($"[LoadSprite] Failed to load main texture at {pngPath}");
+                return null;
+            }
             texture.name = $"{file}.png";
             texture.filterMode = FilterMode.Point;
             texture.wrapMode = TextureWrapMode.Clamp;
             texture.Apply();
 
-            string pColorPath = Path.Combine(path, $"{file}_p.png");
+            // Load mask texture
             Texture2D maskTexture = SpriteImage(pColorPath);
-            maskTexture.name = $"{file}.png";
+            if (maskTexture == null)
+            {
+                NativeLogger.Error($"[LoadSprite] Failed to load mask texture at {pColorPath}");
+                return null;
+            }
+            maskTexture.name = $"{file}_p.png";
             maskTexture.filterMode = FilterMode.Point;
             maskTexture.wrapMode = TextureWrapMode.Clamp;
             maskTexture.Apply();
 
+            // Process metadata -> sprites
             Dictionary<int, List<Sprite>> groupedSprites = ProcessSprites(metadata, texture);
 
+            // Package result
             var result = new SpriteReturnData(
                 metadata.isLooping,
                 metadata.rotation_offset,
@@ -242,13 +294,20 @@ public class CustomSpriteLoader : MonoBehaviour
             );
             result.layer = metadata.layer;
 
+            // Cache in dictionary
             spriteDictionary.Add(file, result);
+
+            NativeLogger.Log($"[LoadSprite] SUCCESS: {file} loaded. " +
+                             $"Texture {texture.width}x{texture.height}, " +
+                             $"Mask {maskTexture.width}x{maskTexture.height}");
+
             return result;
         }
         catch (System.Exception e)
         {
-            NativeLogger.Error($"{e.Message} {e.StackTrace}");
+            NativeLogger.Error($"[LoadSprite] Exception: {e.Message}\n{e.StackTrace}");
         }
+
         return spriteReturnData;
     }
 }

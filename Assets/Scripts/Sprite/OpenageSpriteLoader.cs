@@ -3,11 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
-using UnityEngine.U2D;
-using static TMPro.SpriteAssetUtilities.TexturePacker_JsonArray;
-using static UnityEditor.U2D.ScriptablePacker;
 using Newtonsoft.Json;
-using static UnityEditor.Experimental.GraphView.GraphView;
 using System.Linq;
 
 public class SpriteData

@@ -194,6 +194,7 @@ public class SpritePlayer : MonoBehaviour
         PlaySprites(newFrame, isMirrored);
     }
 
+#if UNITY_EDITOR
     [ContextMenu("Take snapshot of current sprite")]
     //public static void SaveSpriteAsPNG(Sprite sprite)
     public void SaveSpriteAsPNG()
@@ -225,6 +226,7 @@ public class SpritePlayer : MonoBehaviour
         // Cleanup
         DestroyImmediate(texture);
     }
+#endif
 
     // Update is called once per frame
     void Update()

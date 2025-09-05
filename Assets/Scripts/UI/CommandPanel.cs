@@ -164,7 +164,7 @@ public class CommandPanelUI : MonoBehaviour
                 {
                     if (u.GetType() == typeof(MovableUnit))
                     {
-                        if (u.playerId == 1)
+                        if (u.playerId == UnitManager.localPlayerId)
                             ids.Add(u.GetUnitID());
                     }
                 }
@@ -175,7 +175,7 @@ public class CommandPanelUI : MonoBehaviour
                     moveUnitsCommand.action = MoveUnitsCommand.commandName;
                     moveUnitsCommand.unitIDs = new List<ulong>();
                     moveUnitsCommand.unitIDs.AddRange(ids);
-                    moveUnitsCommand.position = hit.point;
+                    moveUnitsCommand.position = (CommonStructures.SerializableVector3)hit.point;
                     moveUnitsCommand.IsAttackMove = true;
                     InputManager.Instance.SendInputCommand(moveUnitsCommand);
                 }
@@ -210,7 +210,7 @@ public class CommandPanelUI : MonoBehaviour
                 {
                     if (u.GetType() == typeof(MovableUnit))
                     {
-                        if (u.playerId == 1)
+                        if (u.playerId == UnitManager.localPlayerId)
                             ids.Add(u.GetUnitID());
                     }
                 }
@@ -238,7 +238,7 @@ public class CommandPanelUI : MonoBehaviour
             {
                 if (u.GetType() == typeof(MovableUnit))
                 {
-                    if (u.playerId == 1)
+                    if (u.playerId == UnitManager.localPlayerId)
                         ids.Add(u.GetUnitID());
                 }
             }
@@ -249,7 +249,7 @@ public class CommandPanelUI : MonoBehaviour
                 moveUnitsCommand.action = MoveUnitsCommand.commandName;
                 moveUnitsCommand.unitIDs = new List<ulong>();
                 moveUnitsCommand.unitIDs.AddRange(ids);
-                moveUnitsCommand.position = hit.point;
+                moveUnitsCommand.position = (CommonStructures.SerializableVector3)hit.point;
                 moveUnitsCommand.IsAttackMove = false;
                 InputManager.Instance.SendInputCommand(moveUnitsCommand);
             }
@@ -291,7 +291,7 @@ public class CommandPanelUI : MonoBehaviour
             {
                 if (u.GetType() == typeof(MovableUnit))
                 {
-                    if (u.playerId == 1)
+                    if (u.playerId == UnitManager.localPlayerId)
                         ids.Add(u.GetUnitID());
                 }
             }
@@ -328,7 +328,7 @@ public class CommandPanelUI : MonoBehaviour
                         dockShipUnitCommand.action = DockShipUnitCommand.commandName;
                         dockShipUnitCommand.unitIDs = new List<ulong>();
                         dockShipUnitCommand.unitIDs.AddRange(ids);
-                        dockShipUnitCommand.position = hit.point;
+                        dockShipUnitCommand.position = (CommonStructures.SerializableVector3)hit.point;
                         InputManager.Instance.SendInputCommand(dockShipUnitCommand);
                     }
                 }
@@ -338,7 +338,7 @@ public class CommandPanelUI : MonoBehaviour
                     moveUnitsCommand.action = MoveUnitsCommand.commandName;
                     moveUnitsCommand.unitIDs = new List<ulong>();
                     moveUnitsCommand.unitIDs.AddRange(ids);
-                    moveUnitsCommand.position = hit.point;
+                    moveUnitsCommand.position = (CommonStructures.SerializableVector3)hit.point;
                     moveUnitsCommand.IsAttackMove = this.blockUI;
                     InputManager.Instance.SendInputCommand(moveUnitsCommand);
                 }

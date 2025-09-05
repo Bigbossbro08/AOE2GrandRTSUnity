@@ -248,6 +248,8 @@ public class UnitManager : MonoBehaviour
 
     public SpatialHashGrid spatialHashGrid;
 
+    public static ulong localPlayerId = 2;
+
     public static ulong counter = 1;
     public static ulong crowdIDCounter = 0;
 

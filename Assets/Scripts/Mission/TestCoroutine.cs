@@ -1,10 +1,6 @@
-using log4net;
-using NUnit.Framework;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using static PathfinderTest;
-using static UnityEditor.PlayerSettings;
 
 public class TestCoroutine : MonoBehaviour
 {
@@ -14,6 +10,15 @@ public class TestCoroutine : MonoBehaviour
         //DeterministicUpdateManager.Instance.CoroutineManager.StartCoroutine(SetupEnemyShip());
         if (MapLoader.Instance.LoadMap("scenario/scenario1"))
         {
+            if (UnitManager.localPlayerId == 1)
+            {
+                GameManager.Instance.CameraHandler.transform.position = new Vector3(47.9000015f, 0, 23.7000008f);
+            }
+            if (UnitManager.localPlayerId == 2)
+            {
+                GameManager.Instance.CameraHandler.transform.position = new Vector3(67.8011475f, 0, 83.6215668f);
+            }
+
             Debug.Log("Map load was successful");
 
             //System.Action<Unit> PreSpawnAction = (unit) =>
@@ -187,7 +192,7 @@ public class TestCoroutine : MonoBehaviour
                 MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
                 moveUnitsCommand.action = MoveUnitsCommand.commandName;
                 moveUnitsCommand.unitIDs = unitIds;
-                moveUnitsCommand.position = enemy_ship.transform.position;
+                moveUnitsCommand.position = (CommonStructures.SerializableVector3)enemy_ship.transform.position;
                 moveUnitsCommand.IsAttackMove = false;
                 InputManager.Instance.SendInputCommand(moveUnitsCommand);
             }
@@ -205,7 +210,7 @@ public class TestCoroutine : MonoBehaviour
                 MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
                 moveUnitsCommand.action = MoveUnitsCommand.commandName;
                 moveUnitsCommand.unitIDs = unitIds;
-                moveUnitsCommand.position = playerShip.transform.position;
+                moveUnitsCommand.position = (CommonStructures.SerializableVector3)playerShip.transform.position;
                 moveUnitsCommand.IsAttackMove = false;
                 InputManager.Instance.SendInputCommand(moveUnitsCommand);
             }
@@ -234,7 +239,7 @@ public class TestCoroutine : MonoBehaviour
                 MoveUnitsCommand moveUnitsCommand = new MoveUnitsCommand();
                 moveUnitsCommand.action = MoveUnitsCommand.commandName;
                 moveUnitsCommand.unitIDs = new List<ulong>() { enemy_ship.id };
-                moveUnitsCommand.position = newCopiedPosition_0;
+                moveUnitsCommand.position = (CommonStructures.SerializableVector3)newCopiedPosition_0;
                 moveUnitsCommand.IsAttackMove = false;
                 InputManager.Instance.SendInputCommand(moveUnitsCommand);
 

@@ -209,7 +209,7 @@ public class UnitMovementTests : BasePlayModeTest
         {
             action = MoveUnitsCommand.commandName,
             unitIDs = units.Select(u => u.id).ToList(),
-            position = TestTriggerPos,
+            position = (CommonStructures.SerializableVector3)TestTriggerPos,
             IsAttackMove = false
         });
 
@@ -346,7 +346,7 @@ public class UnitMovementTests : BasePlayModeTest
           new MoveUnitsCommand {
               action = MoveUnitsCommand.commandName,
               unitIDs = new List<ulong> { unit.id }, 
-              position = TestTriggerPos ,
+              position = (CommonStructures.SerializableVector3)TestTriggerPos ,
               IsAttackMove = false
           });
 

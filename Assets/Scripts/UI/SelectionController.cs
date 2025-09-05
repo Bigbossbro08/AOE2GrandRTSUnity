@@ -47,21 +47,21 @@ public class SelectionController : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.F3))
-        {
-            if (DeterministicUpdateManager.Instance.IsPaused())
-            {
-                ResumeGameCommand resumeGameCommand = new ResumeGameCommand();
-                resumeGameCommand.action = ResumeGameCommand.commandName;
-                InputManager.Instance.SendInputCommand(resumeGameCommand);
-            }
-            else
-            {
-                PauseGameCommand pauseGameCommand = new PauseGameCommand();
-                pauseGameCommand.action = PauseGameCommand.commandName;
-                InputManager.Instance.SendInputCommand(pauseGameCommand);
-            }
-        }
+        //if (Input.GetKeyDown(KeyCode.F3))
+        //{
+        //    if (DeterministicUpdateManager.Instance.IsPaused())
+        //    {
+        //        ResumeGameCommand resumeGameCommand = new ResumeGameCommand();
+        //        resumeGameCommand.action = ResumeGameCommand.commandName;
+        //        InputManager.Instance.SendInputCommand(resumeGameCommand);
+        //    }
+        //    else
+        //    {
+        //        PauseGameCommand pauseGameCommand = new PauseGameCommand();
+        //        pauseGameCommand.action = PauseGameCommand.commandName;
+        //        InputManager.Instance.SendInputCommand(pauseGameCommand);
+        //    }
+        //}
 
         if (Input.GetKeyDown(KeyCode.Alpha0))
         {
@@ -158,7 +158,7 @@ public class SelectionController : MonoBehaviour
             {
                 if (u.GetType() == typeof(MovableUnit))
                 {
-                    if (u.playerId == 1)
+                    if (u.playerId == UnitManager.localPlayerId)
                         ids.Add(u.GetUnitID());
                 }
             }
@@ -188,7 +188,7 @@ public class SelectionController : MonoBehaviour
                 {
                     if (u.GetType() == typeof(MovableUnit))
                     {
-                        if (u.playerId == 1)
+                        if (u.playerId == UnitManager.localPlayerId)
                             ids.Add(u.GetUnitID());
                     }
                 }

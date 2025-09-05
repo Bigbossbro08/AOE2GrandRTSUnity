@@ -88,7 +88,7 @@ public class NewTestScript
             moveUnitsCommand.action = MoveUnitsCommand.commandName;
             moveUnitsCommand.unitIDs = new List<ulong>();
             moveUnitsCommand.unitIDs.Add(id);
-            moveUnitsCommand.position = hitPoint;
+            moveUnitsCommand.position = (CommonStructures.SerializableVector3)hitPoint;
             moveUnitsCommand.IsAttackMove = false;
             InputManager.Instance.SendInputCommand(moveUnitsCommand);
         }
@@ -257,7 +257,7 @@ public class NewTestScript
         moveUnitsCommand.action = MoveUnitsCommand.commandName;
         moveUnitsCommand.unitIDs = new List<ulong>();
         moveUnitsCommand.unitIDs.AddRange(ids);
-        moveUnitsCommand.position = hitPoint;
+        moveUnitsCommand.position = (CommonStructures.SerializableVector3)hitPoint;
         moveUnitsCommand.IsAttackMove = attackMove;
         InputManager.Instance.SendInputCommand(moveUnitsCommand);
 
@@ -676,7 +676,7 @@ public class NewTestScript
         moveUnitsCommand.action = MoveUnitsCommand.commandName;
         moveUnitsCommand.unitIDs = new List<ulong>();
         moveUnitsCommand.unitIDs.AddRange(ids);
-        moveUnitsCommand.position = hitPoint;
+        moveUnitsCommand.position = (CommonStructures.SerializableVector3)hitPoint;
         moveUnitsCommand.IsAttackMove = attackMove;
         InputManager.Instance.SendInputCommand(moveUnitsCommand);
 
@@ -2922,7 +2922,7 @@ public class NewTestScript
         moveUnitsCommand.action = MoveUnitsCommand.commandName;
         moveUnitsCommand.unitIDs = new List<ulong>();
         moveUnitsCommand.unitIDs.AddRange(ids);
-        moveUnitsCommand.position = hitPoint;
+        moveUnitsCommand.position = (CommonStructures.SerializableVector3)hitPoint;
         moveUnitsCommand.IsAttackMove = attackMove;
         InputManager.Instance.SendInputCommand(moveUnitsCommand);
 

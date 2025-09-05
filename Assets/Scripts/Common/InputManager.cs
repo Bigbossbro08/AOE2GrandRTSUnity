@@ -1,4 +1,6 @@
 using CoreGameUnitAI;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -17,13 +19,12 @@ public class InputCommand
     public string action;  // The type of action (e.g., "Move", "Attack")
 }
 
-
-
+[System.Serializable]
 public class MoveUnitCommand : InputCommand
 {
     public const string commandName = "Move Unit Command";
     public ulong unitID;
-    public Vector3 position;
+    public CommonStructures.SerializableVector3 position;
 
     public void Execute()
     {
@@ -37,18 +38,19 @@ public class MoveUnitCommand : InputCommand
                 movableUnit.ResetUnit(true);
                 //movableUnit.movementComponent.StartPathfind(position);
                 //movableUnit.SetAIModule(UnitAIModule.AIModule.BasicMovementAIModule, position, newCrowdID);
-                movableUnit.aiController.SetAI(new MoveToPositionAI(movableUnit.aiController, position, newCrowdID));
+                movableUnit.aiController.SetAI(new MoveToPositionAI(movableUnit.aiController, (Vector3)position, newCrowdID));
                 //movableUnit.movementComponent.crowdID = newCrowdID;
             }
         }
     }
 }
 
+[System.Serializable]
 public class MoveUnitsCommand : InputCommand
 {
     public const string commandName = "Move Units Command";
     public List<ulong> unitIDs;
-    public Vector3 position;
+    public CommonStructures.SerializableVector3 position;
     public bool IsAttackMove = false;
 
     public void ArrangeUnits_New(List<Unit> units, Vector3 position, ulong crowdID)
@@ -279,17 +281,18 @@ public class MoveUnitsCommand : InputCommand
                 units.Add(unit);
             }
         }
-        MoveUnitsToTargetInFormation(position, units);
+        MoveUnitsToTargetInFormation((Vector3)position, units);
 
         return;
     }
 }
 
+[System.Serializable]
 public class DockShipUnitCommand : InputCommand
 {
     public const string commandName = "Dock Ship Unit Command";
     public List<ulong> unitIDs;
-    public Vector3 position;
+    public CommonStructures.SerializableVector3 position;
 
     public void ArrangeUnits_New(List<Unit> units, Vector3 position, ulong crowdID)
     {
@@ -412,36 +415,41 @@ public class DockShipUnitCommand : InputCommand
                 units.Add(unit);
             }
         }
-        MoveUnitsToTargetInFormation(position, units);
+        MoveUnitsToTargetInFormation((Vector3)position, units);
     }
 }
 
+[System.Serializable]
 public class PauseGameCommand : InputCommand
 {
     public const string commandName = "Pause Game Command";
 
     public void Execute()
     {
-        if (!DeterministicUpdateManager.Instance.IsPaused())
-        {
-            DeterministicUpdateManager.Instance.Pause();
-        }
+        NativeLogger.Log("IMPLEMENT PROPER PAUSING");
+        //if (!DeterministicUpdateManager.Instance.IsPaused())
+        //{
+        //    DeterministicUpdateManager.Instance.Pause();
+        //}
     }
 }
 
+[System.Serializable]
 public class ResumeGameCommand : InputCommand
 {
     public const string commandName = "Resume Game Command";
 
     public void Execute()
     {
-        if (DeterministicUpdateManager.Instance.IsPaused())
-        {
-            DeterministicUpdateManager.Instance.Resume();
-        }
+        NativeLogger.Log("IMPLEMENT PROPER RESUMING");
+        //if (DeterministicUpdateManager.Instance.IsPaused())
+        //{
+        //    DeterministicUpdateManager.Instance.Resume();
+        //}
     }
 }
 
+[System.Serializable]
 public class DeleteUnitsCommand : InputCommand
 {
     public const string commandName = "Delete Units Command";
@@ -461,6 +469,7 @@ public class DeleteUnitsCommand : InputCommand
     }
 }
 
+[System.Serializable]
 public class StopUnits : InputCommand
 {
     public const string commandName = "Stop Units";
@@ -486,6 +495,7 @@ public class StopUnits : InputCommand
     }
 }
 
+[System.Serializable]
 public class BoardToShipCommand : InputCommand
 {
     public const string commandName = "Board To Ship Command";
@@ -525,6 +535,7 @@ public class BoardToShipCommand : InputCommand
     }
 }
 
+[System.Serializable]
 public class AttackUnitCommand : InputCommand
 {
     public const string commandName = "Attack Unit Command";
@@ -593,13 +604,6 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
         // you could also send KeepAlive here if you like
     }
 
-    //public void SendInputCommand(InputCommand command)
-    //{
-    //    command.frame = DeterministicUpdateManager.Instance.tickCount + (ulong)networkAdapter.GetDelay();
-    //    //QueueInput(command);
-    //    networkAdapter.SendCommand(command);
-    //}
-
     public void QueueInput(InputCommand command)
     {
         if (!queuedCommands.ContainsKey(command.frame))
@@ -609,13 +613,6 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
 
         //Debug.Log($"Received and added new command for {command.frame}");
         queuedCommands[command.frame].Add(command); 
-        
-        if (DeterministicUpdateManager.Instance.IsPaused())
-        {
-            // Simulate minimal ticking just to process input
-            // DeterministicUpdate(DeterministicUpdateManager.FixedStep, DeterministicUpdateManager.Instance.tickCount);
-            DeterministicUpdateManager.Instance.Resume();
-        }
     }
 
     private void ProcessCommandsForFrame(ulong frame)
@@ -639,8 +636,40 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
             ExecuteCommand(cmd);
         queuedCommands.Remove(frame);
     }
+    
+    // Custom converter
+    public class InputCommandConverter : JsonConverter
+    {
+        public override bool CanConvert(Type objectType) => objectType == typeof(InputCommand);
 
-    private void ExecuteCommand(InputCommand command)
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            var jObject = JObject.Load(reader);
+
+            var action = jObject["action"]?.ToString();
+
+            InputCommand command;
+            switch (action)
+            {
+                case "Move Units Command":
+                    command = new MoveUnitsCommand();
+                    break;
+                default:
+                    command = new InputCommand();
+                    break;
+            }
+
+            serializer.Populate(jObject.CreateReader(), command);
+            return command;
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            JObject.FromObject(value, serializer).WriteTo(writer);
+        }
+    }
+
+    public void ExecuteCommand(InputCommand command)
     {
         if (command.action != "KeepAlive")
             NativeLogger.Log($"Executing {command.action} at Frame {command.frame}");
@@ -705,6 +734,8 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
 
     public void SendInputCommand(InputCommand command)
     {
+        DeterministicUpdateManager.Instance.SendInputCommand(command);//.newDeterministicInputManager.SendInputCommand(command);
+        return;
         if (command.action != "KeepAlive")
             NativeLogger.Log($"Command type recieved was: {command.action}");
 
@@ -727,7 +758,7 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
     {
         ProcessCommandsForFrame(tickID);
 
-        // KeepAlive so you don�t time out while paused
+        // KeepAlive so you don't time out while paused
         var keepAlive = new InputCommand { playerID = -1, action = "KeepAlive" };
         SendInputCommand(keepAlive);
     }

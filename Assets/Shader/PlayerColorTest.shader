@@ -9,11 +9,6 @@ Shader "Custom/PlayerColorTest"
     }
     SubShader
     {
-        //Tags { 
-        //    "RenderType"="Transparent" 
-        //    "Queue"="Transparent" 
-        //    "RenderPipeline"="UniversalRenderPipeline" 
-        //}
         Tags {
             "Queue"= "Transparent"//"AlphaTest" // or Transparent+10
             "RenderType"="Transparent"
@@ -22,7 +17,6 @@ Shader "Custom/PlayerColorTest"
         //ZWrite On
         //ZTest LEqual
         
-        Tags { "RenderType"="Transparent" "Queue"="Transparent" }
         LOD 100
         Blend SrcAlpha OneMinusSrcAlpha
         Cull Off
