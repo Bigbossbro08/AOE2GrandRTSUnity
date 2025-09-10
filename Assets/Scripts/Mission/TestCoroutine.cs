@@ -1,9 +1,25 @@
+using ENet;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class TestCoroutine : MonoBehaviour
 {
+    private void Awake()
+    {
+        UnitEventHandler.Instance.RegisterEvent((int)UnitEventHandler.EventID.OnUnitSpawn, OnUnitSpawn);
+        UnitEventHandler.Instance.RegisterEvent((int)UnitEventHandler.EventID.OnDeath, OnDeath);
+        UnitEventHandler.Instance.RegisterEvent((int)UnitEventHandler.EventID.OnCorpseSpawn, OnUnitKilled);
+    }
+
+    class PlayerScoreBoard
+    {
+        public int currentUnitCount = 0;
+        public int unitKilled = 0;
+    }
+
+    Dictionary<ulong, PlayerScoreBoard> playerScoreBoards = new Dictionary<ulong, PlayerScoreBoard>();
+
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
@@ -292,5 +308,127 @@ public class TestCoroutine : MonoBehaviour
         {
             CleanUp?.Invoke();
         }
+    }
+
+    private void OnDestroy()
+    {
+        UnitEventHandler.Instance.UnRegisterEvent((int)UnitEventHandler.EventID.OnUnitSpawn, OnUnitSpawn);
+        UnitEventHandler.Instance.UnRegisterEvent((int)UnitEventHandler.EventID.OnCorpseSpawn, OnDeath);
+        UnitEventHandler.Instance.UnRegisterEvent((int)UnitEventHandler.EventID.OnCorpseSpawn, OnUnitKilled); 
+    }
+
+    private void OnUnitKilled(object[] obj)
+    {
+        ulong selfId = (ulong)obj[0];
+        ulong targetId = (ulong)obj[1];
+        
+        Unit selfUnit = UnitManager.Instance.GetUnit(selfId);
+        Unit targetUnit = UnitManager.Instance.GetUnit(targetId);
+
+        ulong playerId = selfUnit.playerId;
+        if (!playerScoreBoards.ContainsKey(playerId))
+        {
+            PlayerScoreBoard board = new PlayerScoreBoard();
+            playerScoreBoards.Add(playerId, board);
+        }
+        playerScoreBoards[playerId].unitKilled++;
+    }
+
+    private void OnGUI()
+    {
+        bool hasWon = false;
+        if (!hasWon)
+        {
+            ulong loserPlayerId = 0;
+            foreach (var pScore in playerScoreBoards)
+            {
+                if (pScore.Value.currentUnitCount == 0)
+                {
+                    loserPlayerId = pScore.Key;
+                    hasWon = true;
+                    break;
+                }
+            }
+            if (hasWon)
+            {
+                // Define a basic style based on the default label style
+                GUIStyle uiStyle = new GUIStyle(GUI.skin.label);
+                uiStyle.fontSize = 58;
+
+                //Rect rect = new Rect(30, yOffset, 180, Screen.height - yOffset);
+
+                float width = 800f;
+                float height = 60f;
+                float true_screen_width = (Screen.width - width) / 2;
+                float true_screen_height = (Screen.height - height) / 2;
+                Rect uiRect = new Rect(true_screen_width, true_screen_height, width, height);
+                if (UnitManager.localPlayerId != loserPlayerId)
+                {
+                    uiStyle.normal.textColor = Color.yellow;
+                    GUI.Label(uiRect, "You are victorious!", uiStyle);
+                }
+                else
+                {
+                    uiStyle.normal.textColor = Color.black;
+                    GUI.Label(uiRect, "You are defeated!", uiStyle);
+                }
+                return;
+            }
+        }
+
+        {
+            // Define a basic style based on the default label style
+            GUIStyle uiStyle = new GUIStyle(GUI.skin.label);
+            uiStyle.fontSize = 18;
+
+            // Set up initial position and spacing
+            float yOffset = 30;
+            float ySpacing = uiStyle.fontSize * 4;
+
+            string labelStr = "";
+
+            foreach (var pScore in playerScoreBoards)
+            {
+                var pScoreVal = pScore.Value;
+                // Define a new Rect for each label, incrementing the Y position
+                labelStr =
+                $"Player ID {pScore.Key}: \n" +
+                $"\t Unit count: {pScoreVal.currentUnitCount}\n" +
+                $"\t Unit killed: {pScoreVal.unitKilled}\n";
+
+                uiStyle.normal.textColor = UnitManager.Instance.GetPlayerData(pScore.Key).color;
+
+                Rect rect = new Rect(30, yOffset, 180, Screen.height - yOffset);
+                GUI.Label(rect, labelStr, uiStyle);
+
+                yOffset += ySpacing;
+            }
+        }
+    }
+
+    private void OnUnitSpawn(object[] obj)
+    {
+        ulong selfId = (ulong)obj[0];
+        Unit unit = UnitManager.Instance.GetUnit(selfId);
+        Debug.Assert(unit != null);
+        ulong playerId = unit.playerId;
+        if (!playerScoreBoards.ContainsKey(unit.playerId))
+        {
+            PlayerScoreBoard board = new PlayerScoreBoard();
+            playerScoreBoards.Add(unit.playerId, board);
+        }
+        playerScoreBoards[playerId].currentUnitCount++;
+    }
+
+    private void OnDeath(object[] obj)
+    {
+        ulong selfId = (ulong)obj[0];
+        Unit unit = UnitManager.Instance.GetUnit(selfId);
+        if (!playerScoreBoards.ContainsKey(unit.playerId))
+        {
+            PlayerScoreBoard board = new PlayerScoreBoard();
+            playerScoreBoards.Add(unit.playerId, board);
+        }
+        playerScoreBoards[unit.playerId].currentUnitCount--;
     }
 }

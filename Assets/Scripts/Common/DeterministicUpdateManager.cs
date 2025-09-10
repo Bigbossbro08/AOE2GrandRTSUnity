@@ -6,12 +6,22 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using UnityEngine;
+using Unity.Entities;
 using static DeterministicUpdateManager.NewDeterministicInputManager;
 using static InputManager;
+using static Utilities;
+using Unity.Physics.Systems;
+using Unity.Physics;
+using System.Linq;
 
 public interface IDeterministicUpdate
 {
     void DeterministicUpdate(float deltaTime, ulong tickID);
+}
+
+public interface IDeterministicPostPhysicsUpdate
+{
+    void DeterministicPostPhysicsUpdate(float deltaTime, ulong tickID);
 }
 
 public static class TypeIndex
@@ -211,13 +221,18 @@ public class DeterministicUpdateManager : MonoBehaviour
     [System.Serializable]
     public class ENetMultiplayerInputManager
     {
+        public static string ip = "127.0.0.1";
+        public static ushort port = 7777;
+
         public enum PacketType
         {
             Connected = 0,
             Disconnected,
             Tick,
-            ClientInput,   // Client -> Server
-            ServerInputBundle// Server -> Clients
+            ClientInput,        // Client -> Server
+            ServerInputBundle,  // Server -> Clients
+            SetupLobbyInfo,
+            LobbyMarkReady
         }
 
         private Host client;
@@ -239,15 +254,6 @@ public class DeterministicUpdateManager : MonoBehaviour
 
         void StartClient()
         {
-            client = new Host();
-            Address address = new Address();
-            address.SetHost("127.0.0.1"); // TODO: add proper host
-            address.Port = 1234; // TODO: add proper port
-
-            client.Create();
-
-            // Connect to the server
-            peer = client.Connect(address);
 
             // Start a server thread to handle client connections and messages
             clientThread = new Thread(ClientLoop);
@@ -257,6 +263,16 @@ public class DeterministicUpdateManager : MonoBehaviour
 
         private void ClientLoop()
         {
+            client = new Host();
+            Address address = new Address();
+            address.SetHost(ip);
+            address.Port = port;
+
+            client.Create();
+
+            // Connect to the server
+            peer = client.Connect(address);
+
             while (clientRunning)
             {
                 bool polled = false;
@@ -297,6 +313,8 @@ public class DeterministicUpdateManager : MonoBehaviour
                 // Sleep for a bit to avoid maxing out the CPU
                 Thread.Sleep(10);
             }
+
+            peer.Disconnect(0);
         }
 
         private void HandleRecievingPacket(Packet packet, Peer peer)
@@ -311,6 +329,11 @@ public class DeterministicUpdateManager : MonoBehaviour
                 PacketType packetType = (PacketType)reader.ReadByte();
                 switch (packetType)
                 {
+                    case PacketType.Connected:
+                        {
+                            SendConnectedPacket();
+                        }
+                        break;
                     case PacketType.Tick:
                         {
                             ulong tick = reader.ReadUInt64();
@@ -342,6 +365,34 @@ public class DeterministicUpdateManager : MonoBehaviour
                             HasSentRequest = false;
                         }
                         break;
+                    case PacketType.SetupLobbyInfo:
+                        {
+
+                        }
+                        break;
+                    case PacketType.LobbyMarkReady:
+                        {
+                            bool ready = reader.ReadBoolean();
+                            DeterministicUpdateManager.Instance.isReady = ready;
+                            Debug.Log("Recieved ready packet: " + ready);
+                        }
+                        break;
+                }
+            }
+        }
+
+        public void SendReadyPacket(bool isReady)
+        {
+            {
+                using (var stream = new MemoryStream())
+                using (var writer = new BinaryWriter(stream))
+                {
+                    Packet packet = default(Packet);
+                    writer.Write((byte)PacketType.LobbyMarkReady);
+                    writer.Write(isReady);
+                    byte[] data = stream.ToArray();
+                    packet.Create(data, PacketFlags.Reliable);
+                    peer.Send(0, ref packet);
                 }
             }
         }
@@ -353,8 +404,12 @@ public class DeterministicUpdateManager : MonoBehaviour
 
         public void StopClient()
         {
-            peer.DisconnectNow(0);
+            if (!clientRunning)
+            {
+                return;
+            }
             clientRunning = false;
+            peer.Disconnect(0);
             if (clientThread != null && clientThread.IsAlive)
             {
                 clientThread.Join();
@@ -375,33 +430,66 @@ public class DeterministicUpdateManager : MonoBehaviour
             {
                 return;
             }
-            using (var stream = new MemoryStream())
-            using (var writer = new BinaryWriter(stream))
+            //using (var stream = new MemoryStream())
+            //using (var writer = new BinaryWriter(stream))
+            //{
+            //    Packet packet = default(Packet);
+            //    writer.Write((byte)PacketType.ServerInputBundle);
+            //    writer.Write(from);
+            //    writer.Write(to);
+            //    byte[] data = stream.ToArray();
+            //    packet.Create(data, PacketFlags.Reliable);
+            //    peer.Send(0, ref packet);
+            //    HasSentRequest = true;
+            //}
+            SendPacket(PacketType.ServerInputBundle, writer =>
             {
-                Packet packet = default(Packet);
-                writer.Write((byte)PacketType.ServerInputBundle);
                 writer.Write(from);
                 writer.Write(to);
-                byte[] data = stream.ToArray();
-                packet.Create(data, PacketFlags.Reliable);
-                peer.Send(0, ref packet);
-                HasSentRequest = true;
-            }
+            });
+            HasSentRequest = true;
         }
 
-        public void SentCommandInput(string command)
+        private void SendPacket(PacketType type, Action<BinaryWriter> writeAction = null)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
             {
-                Packet packet = default(Packet);
-                writer.Write((byte)PacketType.ClientInput);
-                string cmdString = command;
-                writer.Write(cmdString);
+                Packet packet = default;
+                writer.Write((byte)type);
+                writeAction?.Invoke(writer);
+                writer.Flush();
+
                 byte[] data = stream.ToArray();
                 packet.Create(data, PacketFlags.Reliable);
                 peer.Send(0, ref packet);
             }
+        }
+
+        public void SendConnectedPacket()
+        {
+            SendPacket(PacketType.Connected);
+            SendPacket(PacketType.SetupLobbyInfo, w => w.Write((int)2));
+        }
+
+        public void SentCommandInput(string command)
+        {
+            //using (var stream = new MemoryStream())
+            //using (var writer = new BinaryWriter(stream))
+            //{
+            //    Packet packet = default(Packet);
+            //    writer.Write((byte)PacketType.ClientInput);
+            //    string cmdString = command;
+            //    writer.Write(cmdString);
+            //    byte[] data = stream.ToArray();
+            //    packet.Create(data, PacketFlags.Reliable);
+            //    peer.Send(0, ref packet);
+            //}
+            SendPacket(PacketType.ClientInput, writer =>
+            {
+                string cmdString = command;
+                writer.Write(cmdString);
+            });
         }
 
         int commandIndex = 0;
@@ -440,15 +528,18 @@ public class DeterministicUpdateManager : MonoBehaviour
     public const float FixedStep = 1/ 25f; // 60 Hz
     public DeterministicTimer timer = new DeterministicTimer();
 
+    //public EntityManager ecsEntityManager {  get; private set; }
+    //private ManualPhysicsSystem _manualPhysicsSystem;
     public DeterministicCoroutineManager CoroutineManager { get; private set; }
     public GameServerInstance gameServerInstance { get; private set; }
     public NewDeterministicInputManager newDeterministicInputManager { get; private set; }
     public ENetMultiplayerInputManager enetMultiplayerInputManager { get; private set; }
+    public Utilities.DeterministicRandom deterministicRandom { get; private set; }
     // **Use a list array instead of a dictionary**
     private readonly List<IDeterministicUpdate>[] categorizedObjects = new List<IDeterministicUpdate>[256];
 
     // **Use a list array instead of a dictionary**
-    private readonly List<IDeterministicUpdate>[] categorizedPostPhysicsObjects = new List<IDeterministicUpdate>[256];
+    private readonly List<IDeterministicPostPhysicsUpdate>[] categorizedPostPhysicsObjects = new List<IDeterministicPostPhysicsUpdate>[256];
 
     private void Awake()
     {
@@ -459,8 +550,8 @@ public class DeterministicUpdateManager : MonoBehaviour
         }
         Instance = this;
         //DontDestroyOnLoad(gameObject);
-
-        UnityEngine.Random.InitState(seed);
+        //UnityEngine.Random.InitState(seed);
+        deterministicRandom = new DeterministicRandom(42);
 
         enabled = false;
         Time.fixedDeltaTime = FixedStep;
@@ -480,6 +571,8 @@ public class DeterministicUpdateManager : MonoBehaviour
 
         // Multiplayer
         enetMultiplayerInputManager = new ENetMultiplayerInputManager();
+        //var _dotsWorld = UnitManager.Instance.ecsEntityManager.World;
+        //_manualPhysicsSystem = _dotsWorld.GetOrCreateSystemManaged<ManualPhysicsSystem>();
 
         CanTick = () =>
         {
@@ -494,6 +587,10 @@ public class DeterministicUpdateManager : MonoBehaviour
                 ulong requestFrom = clientTick + 1;
                 ulong rangeOfTicks = 5;
                 ulong requestTo = (ulong)Mathf.Min(requestFrom + rangeOfTicks, enetMultiplayerInputManager.serverTick);
+                if (requestFrom >= requestTo)
+                {
+                    return false;
+                }
                 NativeLogger.Log($"Sending command request from {requestFrom} to {requestTo}");
                 enetMultiplayerInputManager.RequestCommandInRange(requestFrom, requestTo);
                 return false;
@@ -516,7 +613,7 @@ public class DeterministicUpdateManager : MonoBehaviour
                 return 0.0f;
             }
 
-            float valueToAccumulate = Time.deltaTime * Mathf.Min(8, tickOffset);
+            float valueToAccumulate = Time.deltaTime * Mathf.Min(64, tickOffset);
 
             return valueToAccumulate;
         };
@@ -533,20 +630,6 @@ public class DeterministicUpdateManager : MonoBehaviour
 
     private void Update()
     {
-        InputManager.Instance.NetworkTick();
-
-        if (Input.GetKeyDown(KeyCode.Home))
-        {
-            if (gameServerInstance.status == GameServerInstance.Status.Ready)
-            {
-                gameServerInstance.status = GameServerInstance.Status.Stalling;
-            }
-            else if (gameServerInstance.status == GameServerInstance.Status.Stalling)
-            {
-                gameServerInstance.status = GameServerInstance.Status.Ready;
-            }
-        }
-
         if (!CanTick())
         {
             return;
@@ -574,6 +657,8 @@ public class DeterministicUpdateManager : MonoBehaviour
             timer.Update(FixedStep);
             Physics.Simulate(FixedStep);
 
+            //_manualPhysicsSystem.Tick(FixedStep);
+
             PostPhysicsUpdate(FixedStep, tickCount);
 
             elapsedTime += FixedStep;
@@ -584,35 +669,38 @@ public class DeterministicUpdateManager : MonoBehaviour
         //SpriteManager.Instance.Render();
     }
 
-    //private void Update()
-    //{
-    //    accumulatedTime += Time.deltaTime;
-    //    while (accumulatedTime >= FixedStep)
-    //    {
-    //        accumulatedTime -= FixedStep;
-    //
-    //        // Implement Input Callbacks here
-    //        InputManager.Instance.DeterministicUpdate(FixedStep, tickCount);
-    //
-    //        // Run deterministic game logic here
-    //        RunDeterministicUpdate(FixedStep, tickCount);
-    //
-    //        if (PathfindingManager.Instance.enabled)
-    //            PathfindingManager.Instance.DeterministicUpdate(FixedStep, tickCount);
-    //
-    //        // Step the deterministic timer
-    //        timer.Update(FixedStep);
-    //
-    //        // Manually simulate physics for this step
-    //        Physics.Simulate(FixedStep);
-    //
-    //        elapsedTime += Time.deltaTime;
-    //        tickCount++;
-    //    }
-    //
-    //    //if (PathfindingManager.Instance.enabled)
-    //    //    PathfindingManager.Instance.DefaultUpdate();
-    //}
+    public bool isReady = false;
+    private void OnGUI()
+    {
+        if (isReady)
+        {
+            if (Input.GetKeyDown(KeyCode.F3))
+            {
+                enetMultiplayerInputManager.SendReadyPacket(false);
+            }
+
+            return;
+        }
+        // Define a basic style based on the default label style
+        GUIStyle uiStyle = new GUIStyle(GUI.skin.button);
+        uiStyle.fontSize = 58;
+        uiStyle.alignment = TextAnchor.MiddleCenter;
+
+        float width = 800f;
+        float height = 60f;
+        float true_screen_width = (Screen.width - width) / 2;
+        float true_screen_height = (Screen.height - height) / 2;
+        Rect uiRect = new Rect(true_screen_width, true_screen_height, width, height);
+        if (!isReady && GUI.Button(uiRect, "Ready", uiStyle))
+        {
+            enetMultiplayerInputManager.SendReadyPacket(true);
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        enetMultiplayerInputManager?.StopClient();
+    }
 
     private void OnDestroy()
     {
@@ -647,7 +735,7 @@ public class DeterministicUpdateManager : MonoBehaviour
             {
                 for (int j = 0; j < objList.Count; j++)
                 {
-                    objList[j].DeterministicUpdate(deltaTime, tickCount);
+                    objList[j].DeterministicPostPhysicsUpdate(deltaTime, tickCount);
                 }
             }
         }
@@ -662,12 +750,12 @@ public class DeterministicUpdateManager : MonoBehaviour
         categorizedObjects[typeIndex].Add(obj);
     }
 
-    public void RegisterPostPhysics<T>(T obj) where T : IDeterministicUpdate
+    public void RegisterPostPhysics<T>(T obj) where T : IDeterministicPostPhysicsUpdate
     {
         int typeIndex = TypeIndex.GetIndex<T>();
 
         // Ensure list exists
-        categorizedPostPhysicsObjects[typeIndex] ??= new List<IDeterministicUpdate>();
+        categorizedPostPhysicsObjects[typeIndex] ??= new List<IDeterministicPostPhysicsUpdate>();
         categorizedPostPhysicsObjects[typeIndex].Add(obj);
     }
 
@@ -681,7 +769,7 @@ public class DeterministicUpdateManager : MonoBehaviour
         }
     }
 
-    public void UnregisterPostPhysics<T>(T obj) where T : IDeterministicUpdate
+    public void UnregisterPostPhysics<T>(T obj) where T : IDeterministicPostPhysicsUpdate
     {
         int typeIndex = TypeIndex.GetIndex<T>();
 
@@ -699,5 +787,59 @@ public class DeterministicUpdateManager : MonoBehaviour
     public void Resume()
     {
         NativeLogger.Log("Simulation Resumed.");
+    }
+
+    // TODO: Make proper checksum system
+    public void CalculateChecksum()
+    {
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
+
+        writer.Write(tickCount);
+        var units = UnitManager.Instance.GetAllUnits();
+        writer.Write(units.Count);
+        foreach (var unit in units)
+        {
+            writer.Write(unit.Value.id);
+            writer.Write(unit.Value.transform.position.x);
+            writer.Write(unit.Value.transform.position.y);
+            writer.Write(unit.Value.transform.position.z);
+            writer.Write(unit.Value.transform.eulerAngles.y);
+        }
+    }
+}
+
+public partial class ManualPhysicsSystem : SystemBase
+{
+    private FixedStepSimulationSystemGroup _fixedStepGroup;
+
+    protected override void OnCreate()
+    {
+        // Get the system group that contains all physics systems.
+        _fixedStepGroup = World.GetOrCreateSystemManaged<FixedStepSimulationSystemGroup>();
+        _fixedStepGroup.Enabled = false; // Disable it to prevent automatic updates.
+    }
+
+    public void Tick(float fixedDeltaTime)
+    {
+        // Set the fixed delta time for this tick.
+        _fixedStepGroup.Timestep = fixedDeltaTime;
+
+        // Temporarily enable the group to force it to update for one tick.
+        _fixedStepGroup.Enabled = true;
+
+        // Tell the group to run its update logic.
+        _fixedStepGroup.Update();
+
+        //Debug.Log($"PHYSICS TICKING???");
+
+        // Disable it again so it doesn't get called outside our ticker.
+        _fixedStepGroup.Enabled = false;
+    }
+
+    protected override void OnUpdate()
+    {
+        // This system does nothing in its OnUpdate.
+        // The `Tick` method will be called from the classic C# code.
     }
 }

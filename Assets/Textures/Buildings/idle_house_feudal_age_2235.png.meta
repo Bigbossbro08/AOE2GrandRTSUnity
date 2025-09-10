@@ -297,7 +297,14 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      idle_house_feudal_age_2235_0: 5353788858185812197
+      idle_house_feudal_age_2235_1: 2297795982943938566
+      idle_house_feudal_age_2235_2: -1550519692295003986
+      idle_house_feudal_age_2235_3: -8384948164597486144
+      idle_house_feudal_age_2235_4: -1549765168148889756
+      idle_house_feudal_age_2235_5: 2554996599782587970
+      idle_house_feudal_age_2235_6: 8740344451052626155
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

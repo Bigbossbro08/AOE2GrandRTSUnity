@@ -203,7 +203,7 @@ public class MovementComponent : MonoBehaviour, IDeterministicUpdate, MapLoader.
     {
         void SetAngle(float angle)
         {
-            if (rb)
+            if (rb && rb.isKinematic)
             {
                 rb.MoveRotation(Quaternion.Euler(new Vector3(0, angle, 0)));
                 return;

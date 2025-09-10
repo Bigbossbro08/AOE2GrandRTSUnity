@@ -5362,7 +5362,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d11402cea64a0b240a3039bbeadbd7ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  speed: 47.6
+  speed: 100
 --- !u!1 &251717948
 GameObject:
   m_ObjectHideFlags: 0
@@ -10392,7 +10392,8 @@ MonoBehaviour:
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_fontSharedMaterials: []
+  m_fontSharedMaterials:
+  - {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
   m_fontColor32:
@@ -28344,6 +28345,8 @@ GameObject:
   - component: {fileID: 1232009420}
   - component: {fileID: 1232009421}
   - component: {fileID: 1232009422}
+  - component: {fileID: 1232009423}
+  - component: {fileID: 1232009424}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -28419,10 +28422,13 @@ MonoBehaviour:
   dockingTexture: {fileID: 2800000, guid: 78e42981b75951d48a414efdc76cef30, type: 3}
   selectionPanel: {fileID: 706014707}
   commandPanelUI: {fileID: 1098304909}
+  mouseDownTime: 0
+  doubleClickTime: 0.3
+  dragThreshold: 5
+  selectedObject: {fileID: 0}
   mouseButtonDown: 0
   startCheckForDoubleClick: 0
   doubleClickHappened: 0
-  doubleClickThreshold: 0.25
 --- !u!114 &1232009419
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28486,6 +28492,54 @@ MonoBehaviour:
     waterNavMeshHolderObject: {fileID: 0}
   gameData:
     m_DataPath: E:\repos\AOE2GrandRTSUnityFiles\
+--- !u!114 &1232009423
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1232009410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bb54ea4f67dc17342bcd49954c53502d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  DrawColliders: 1
+  DrawColliderEdges: 0
+  DrawColliderAabbs: 0
+  DrawMassProperties: 0
+  DrawBroadphase: 0
+  DrawContacts: 0
+  DrawCollisionEvents: 0
+  DrawTriggerEvents: 0
+  DrawJoints: 0
+  ColliderDisplayMode: 0
+  ColliderEdgesDisplayMode: 0
+  ColliderAabbDisplayMode: 0
+--- !u!114 &1232009424
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1232009410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d30974bf68d61043b1572197db94cdc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_SimulationType: 1
+  m_Gravity:
+    x: -0
+    y: -9.81
+    z: -0
+  m_SolverIterationCount: 4
+  m_EnableSolverStabilizationHeuristic: 0
+  m_MultiThreaded: 1
+  m_CollisionTolerance: 0.01
+  m_SynchronizeCollisionWorld: 0
+  m_IncrementalDynamicBroadphase: 0
+  m_IncrementalStaticBroadphase: 0
 --- !u!1 &1232530696
 GameObject:
   m_ObjectHideFlags: 0
@@ -29785,6 +29839,59 @@ Canvas:
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
+--- !u!1 &1270308774
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1270308776}
+  - component: {fileID: 1270308775}
+  m_Layer: 0
+  m_Name: DOTS Sub Scene
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1270308775
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1270308774}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45a335734b1572644a6a5d09d87adc65, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _SceneAsset: {fileID: 102900000, guid: a3e0986859563584988bc2b042d03cb1, type: 3}
+  _HierarchyColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  AutoLoadScene: 1
+  _SceneGUID:
+    Value:
+      x: 2257129018
+      y: 1213425045
+      z: 187480201
+      w: 465767716
+--- !u!4 &1270308776
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1270308774}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1281091522
 GameObject:
   m_ObjectHideFlags: 0
@@ -48196,3 +48303,4 @@ SceneRoots:
   - {fileID: 173298177}
   - {fileID: 1092297101}
   - {fileID: 6415411303983693494}
+  - {fileID: 1270308776}

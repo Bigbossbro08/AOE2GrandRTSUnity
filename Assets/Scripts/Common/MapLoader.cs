@@ -11,6 +11,9 @@ using UnityEngine;
 using static MovableUnit;
 using Unity.AI.Navigation;
 using static UnitManager;
+using Unity.Physics;
+using Unity.Entities;
+using Unity.Transforms;
 
 public class MapLoader : MonoBehaviour
 {
@@ -285,14 +288,14 @@ public class MapLoader : MonoBehaviour
             navMeshSurface.collectObjects = CollectObjects.Children;
             navMeshSurface.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders;
             mapDataInstance.navMeshHolderObject = navmeshHolder;
-
+            //var em = UnitManager.Instance.ecsEntityManager;
             {
                 GameObject landNavmeshObj = new GameObject("Land Nav Mesh");
                 string landPath = Path.Combine(path, "land");
                 AssimpMeshLoader.MeshReturnData meshReturnData = AssimpMeshLoader.Instance.LoadMeshFromAssimp(landPath); 
                 float size = gameMapMetaData.assimpNavmeshScale;
                 UnityEngine.Mesh mesh = AssimpMeshLoader.ScaleMesh(meshReturnData.mesh, size);
-                MeshCollider meshCollider = landNavmeshObj.AddComponent<MeshCollider>();
+                UnityEngine.MeshCollider meshCollider = landNavmeshObj.AddComponent<UnityEngine.MeshCollider>();
                 meshCollider.sharedMesh = mesh;
                 landNavmeshObj.transform.SetParent(navmeshHolder.transform, true);
                 NavMeshModifier navMeshModifier = landNavmeshObj.AddComponent<NavMeshModifier>();
@@ -307,7 +310,7 @@ public class MapLoader : MonoBehaviour
                 AssimpMeshLoader.MeshReturnData meshReturnData = AssimpMeshLoader.Instance.LoadMeshFromAssimp(waterPath);
                 float size = gameMapMetaData.assimpNavmeshScale;
                 UnityEngine.Mesh mesh = AssimpMeshLoader.ScaleMesh(meshReturnData.mesh, size);
-                MeshCollider meshCollider = waterNavmeshObj.AddComponent<MeshCollider>();
+                UnityEngine.MeshCollider meshCollider = waterNavmeshObj.AddComponent<UnityEngine.MeshCollider>();
                 meshCollider.sharedMesh = mesh;
                 waterNavmeshObj.transform.SetParent(navmeshHolder.transform, true);
                 NavMeshModifier navMeshModifier = waterNavmeshObj.AddComponent<NavMeshModifier>();
@@ -534,5 +537,18 @@ public class MapLoader : MonoBehaviour
     private void OnApplicationQuit()
     {
         //Save();
+    }
+
+    private void OnDestroy()
+    {
+        //if (mapDataInstance != null)
+        //{
+        //    var em = UnitManager.Instance.ecsEntityManager;
+        //    if (em != null)
+        //    {
+        //        Utilities.DisposeEntity(mapDataInstance.landMeshEntity);
+        //        Utilities.DisposeEntity(mapDataInstance.waterMeshEntity);
+        //    }
+        //}
     }
 }

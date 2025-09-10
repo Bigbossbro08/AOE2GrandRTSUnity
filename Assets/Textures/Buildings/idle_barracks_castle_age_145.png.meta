@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      idle_barracks_castle_age_145_0: 6955493675025018125
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

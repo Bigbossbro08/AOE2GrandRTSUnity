@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      Honeyview_Huskarl_aoe2de_0: 8377370498189512621
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

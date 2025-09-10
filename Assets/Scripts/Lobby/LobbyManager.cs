@@ -86,17 +86,19 @@ public class LobbyManager : MonoBehaviour
 
     [SerializeField] private Button button;
     //[SerializeField] private TMPro.TextMeshProUGUI textMeshPro;
-    [SerializeField] private TMPro.TMP_InputField inputField;
+    [SerializeField] private TMPro.TMP_InputField playerIdField;
+    [SerializeField] private TMPro.TMP_InputField ipField;
+    [SerializeField] private TMPro.TMP_InputField portField;
 
     private void Start()
     {
-        for (int i = 0; i < allIds.Count; i++)
-        {
-            DropdownUniqueSelection dropdownUniqueSelection = new DropdownUniqueSelection(this, dropdowns[i]);
-            assignedIds[uniqueDropdowns[i]] = -1; // none initially
-        }
-
-        RefreshAll();
+        //for (int i = 0; i < allIds.Count; i++)
+        //{
+        //    DropdownUniqueSelection dropdownUniqueSelection = new DropdownUniqueSelection(this, dropdowns[i]);
+        //    assignedIds[uniqueDropdowns[i]] = -1; // none initially
+        //}
+        //
+        //RefreshAll();
     }
 
     public List<int> GetAvailableIds(DropdownUniqueSelection requestingDropdown)
@@ -150,12 +152,31 @@ public class LobbyManager : MonoBehaviour
 
     public void StartGame()
     {
-        if (ulong.TryParse(inputField.text, out ulong id))
+        bool playerCheck = false;
+        bool ipCheck = false;
+        bool portCheck = false;
+        if (ulong.TryParse(playerIdField.text, out ulong id))
         {
             UnitManager.localPlayerId = id;
-            StartCoroutine(LoadGameScene());
             Debug.Log($"Add start game logic as player {id}");
+            playerCheck = true;
         }
-        Debug.Log($"{inputField.text}");
+
+        {
+            DeterministicUpdateManager.ENetMultiplayerInputManager.ip = ipField.text;
+            ipCheck = true;
+        }
+
+        if (ushort.TryParse(portField.text, out ushort port))
+        {
+            DeterministicUpdateManager.ENetMultiplayerInputManager.port = port;
+            portCheck = true;
+        }
+
+        if (playerCheck && ipCheck && portCheck)
+        {
+            StartCoroutine(LoadGameScene()); 
+        }
+        Debug.Log($"{playerIdField.text}");
     }
 }

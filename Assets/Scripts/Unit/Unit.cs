@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using System.Collections.Generic;
+using Unity.Entities;
 using UnityEngine;
 
 public class Unit : MonoBehaviour, MapLoader.IMapSaveLoad
@@ -19,6 +20,8 @@ public class Unit : MonoBehaviour, MapLoader.IMapSaveLoad
         public UnitData() { type = "UnitData"; }
     }
 
+    public Entity entity;
+
     public ulong playerId = 0; // By default nature player
 
     public ulong id = 0;
@@ -29,6 +32,12 @@ public class Unit : MonoBehaviour, MapLoader.IMapSaveLoad
     {
         return id;
     }
+
+    //public void AwakeEntity()
+    //{
+    //    var ecsEntityManager = UnitManager.Instance.ecsEntityManager;
+    //    entity = ecsEntityManager.CreateEntity();
+    //}
 
     protected void Initialize()
     {

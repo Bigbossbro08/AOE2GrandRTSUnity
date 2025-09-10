@@ -121,7 +121,8 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
 
     public static Vector3 GetInaccurateTarget(Vector3 origin, Vector3 target, float accuracy, float maxAngle = 5f)
     {
-        float roll = Random.Range(0f, 100f);
+        Utilities.DeterministicRandom deterministicRandom = DeterministicUpdateManager.Instance.deterministicRandom;
+        float roll = deterministicRandom.NextFloat(0f, 100f);
 
         if (roll <= accuracy)
             return target; // accurate shot
@@ -130,8 +131,8 @@ public class ProjectileUnit : Unit, IDeterministicUpdate
         Vector3 direction = (target - origin).normalized;
 
         // Create a random deviation within a cone
-        float angle = Random.Range(0f, maxAngle);
-        float yaw = Random.Range(0f, 360f);
+        float angle = deterministicRandom.NextFloat(0f, maxAngle);
+        float yaw = deterministicRandom.NextFloat(0f, 360f);
 
         Quaternion deviation = Quaternion.AngleAxis(angle, Quaternion.AngleAxis(yaw, direction) * Vector3.up);
         Vector3 deviatedDir = deviation * direction;

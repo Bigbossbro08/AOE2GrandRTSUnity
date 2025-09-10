@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using Unity.Entities;
 using UnityEngine;
 using UnityEngine.AI;
 using UnityEngine.Pool;
@@ -248,6 +249,7 @@ public class UnitManager : MonoBehaviour
 
     public SpatialHashGrid spatialHashGrid;
 
+    public static string playerName = "YOU";
     public static ulong localPlayerId = 2;
 
     public static ulong counter = 1;
@@ -275,10 +277,12 @@ public class UnitManager : MonoBehaviour
     System.Action<Unit> PreSpawnAction = null;
 
     private string dataPath = "E:\\repos\\AOE2GrandRTSUnityFiles\\data";
+    //public EntityManager ecsEntityManager;
 
     private void Awake()
     {
         dataPath = Path.Combine(MapLoader.GetDataPath(), "data");
+        //ecsEntityManager = Unity.Entities.World.DefaultGameObjectInjectionWorld.EntityManager;
 
         // If there is an instance, and it's not me, delete myself.
         if (Instance != null && Instance != this)
@@ -466,6 +470,12 @@ public class UnitManager : MonoBehaviour
     {
         PreSpawnAction?.Invoke(unit);
         unit.gameObject.SetActive(true);
+
+        //if (ecsEntityManager.HasComponent<Unity.Entities.Disabled>(unit.entity))
+        //{
+        //    ecsEntityManager.RemoveComponent<Unity.Entities.Disabled>(unit.entity);
+        //}
+
         PreSpawnAction = null;
         UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnUnitSpawn, unit.id);
     }
@@ -489,6 +499,11 @@ public class UnitManager : MonoBehaviour
 
     private void _ReleaseMovableUnitfromPool(MovableUnit unit)
     {
+        //if (!ecsEntityManager.HasComponent<Unity.Entities.Disabled>(unit.entity))
+        //{
+        //    ecsEntityManager.AddComponent<Unity.Entities.Disabled>(unit.entity);
+        //}
+
         unit.OnRelease?.Invoke(unit.id);
 
         unit.UpdateGridCell();
@@ -526,12 +541,7 @@ public class UnitManager : MonoBehaviour
 
     private void _DestroyMovableUnitfromPool(MovableUnit unit)
     {
-        if (units.ContainsKey(unit.id))
-        {
-            units.Remove(unit.id);
-        }
-
-        UnitEventHandler.Instance.CallEventByID(UnitEventHandler.EventID.OnUnitRemove, unit.id);
+        //Utilities.DisposeEntity(unit.entity);
         Destroy(unit);
     }
     #endregion

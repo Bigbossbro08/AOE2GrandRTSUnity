@@ -247,7 +247,12 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      idle_palisade_1828_0: 7027843027858089868
+      idle_palisade_1828_1: 3237592087068729308
+      idle_palisade_1828_2: -3239257964835095303
+      idle_palisade_1828_3: 2633444607680184059
+      idle_palisade_1828_4: -1989933457268971526
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

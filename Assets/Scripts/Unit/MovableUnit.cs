@@ -4,6 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.AI.Navigation;
+using Unity.Entities;
+using Unity.Mathematics;
+//using Unity.Physics;
+using Unity.Transforms;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -611,6 +615,7 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     private void Awake()
     {
+        //AwakeEntity();
         aiController = new CoreGameUnitAI.UnitAIController(this, new IdleAI(aiController));
         shipData = new ShipData();
         movementComponent = GetComponent<MovementComponent>();
@@ -882,6 +887,40 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
             capsuleCollider.radius = 0.14f;
             movementComponent.radius = 0.14f;
             movementComponent.solidCollider = capsuleCollider;
+            
+            // Create the collider blob asset
+            //var colliderBlob = Utilities.CreateCapsule(float3.zero, new float3(0, 2, 0), 0.14f);
+
+            //var entityManager = UnitManager.Instance.ecsEntityManager; 
+            
+            //entityManager.AddComponentData(entity, new Unity.Physics.PhysicsStep
+            //{
+            //    Gravity = new float3(0, -9.81f, 0),
+            //    SolverIterationCount = 4
+            //});
+
+            // Add the PhysicsCollider component to the entity
+            //entityManager.AddComponentData(entity, new Unity.Physics.PhysicsCollider { Value = colliderBlob });
+            //
+            //// To make the entity dynamic, add PhysicsVelocity and PhysicsMass
+            //entityManager.AddComponentData(entity, new Unity.Physics.PhysicsVelocity { Linear = float3.zero, Angular = float3.zero });
+            //entityManager.AddComponentData(entity, Unity.Physics.PhysicsMass.CreateDynamic(colliderBlob.Value.MassProperties, 1/50f));
+            //var physicsMass = entityManager.GetComponentData<Unity.Physics.PhysicsMass>(entity);
+            //
+            //physicsMass.InverseInertia = new float3(0, 1, 0);
+            //
+            //// Write the modified PhysicsMass struct back to the entity.
+            //entityManager.SetComponentData(entity, physicsMass);
+            //entityManager.AddComponentData(entity, new Unity.Physics.PhysicsDamping
+            //{
+            //    Linear = 50,
+            //    Angular = 0.05f
+            //});
+            //
+            //entityManager.AddSharedComponent(entity, new Unity.Physics.PhysicsWorldIndex
+            //{
+            //    Value = 0
+            //});
         }
 
         if (movableUnitData.ship_data == null)
@@ -965,21 +1004,14 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
                 }
             };
             DeterministicUpdateManager.Instance.timer.AddTimer(0.2f, action);
-            //if (!IsShip())
-            //{
-            //    defaultModule = UnitAIModule.AIModule.BasicAttackAIModule;
-            //    defaultAiModuleArgs = new List<object>() { null, true };
-            //}
-            //else
-            //{
-            //    defaultModule = UnitAIModule.AIModule.BasicShipAIModule;
-            //    defaultAiModuleArgs = new List<object> { null, true };
-            //}
-            //ResetToDefaultModule();
             aiController.DefaultAI = new IdleAI(aiController);
             aiController.ClearAI();
             aiController.enabled = true;
         }
+        //if (movementComponent)
+        //{
+        //    movementComponent.rb.isKinematic = true;
+        //}
     }
 
     public void ResetUnitWithoutMovementStop()
@@ -1030,6 +1062,15 @@ public class MovableUnit : Unit, IDeterministicUpdate, MapLoader.IMapSaveLoad
 
     private void OnEnable()
     {
+        //entity = UnitManager.Instance.ecsEntityManager.CreateEntity();
+        //var entityManager = UnitManager.Instance.ecsEntityManager;
+        //entityManager.AddComponentData(entity, new LocalTransform
+        //{
+        //    Position = transform.localPosition,
+        //    Rotation = transform.localRotation,
+        //    Scale = 1f
+        //});
+
         lastLocalPosition = transform.localPosition;
         OnRelease = (id) => { };
         Initialize();

@@ -1,10 +1,110 @@
+using Assimp;
 using System;
 using System.Collections.Generic;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Physics;
 using UnityEngine;
 using UnityEngine.AI;
 
 public static class Utilities
 {
+    public struct DeterministicRandom
+    {
+        private uint state;
+
+        public DeterministicRandom(uint seed)
+        {
+            state = seed;
+        }
+
+        public uint NextUInt()
+        {
+            // Xorshift32
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            return state;
+        }
+
+        public int NextInt(int min, int max)
+        {
+            if (min >= max)
+                return min;
+
+            return (int)(NextUInt() % (uint)(max - min)) + min;
+        }
+
+        public float NextFloat()
+        {
+            // 0..1 range (exclusive 1.0f)
+            return (NextUInt() & 0xFFFFFF) / (float)0x1000000;
+        }
+
+        public float NextFloat(float min, float max)
+        {
+            if (min >= max)
+                return min;
+
+            // Scale into range
+            return min + NextFloat() * (max - min);
+        }
+    }
+
+    //public static class DotsHelperFunctions
+    //{
+    //    public static BlobAssetReference<Unity.Physics.Collider> CreateCapsule(float3 vertex0, float3 vertex1, float radius)
+    //    {
+    //        var capsuleGeometry = new Unity.Physics.CapsuleGeometry
+    //        {
+    //            Vertex0 = vertex0,
+    //            Vertex1 = vertex1,
+    //            Radius = radius
+    //        };
+    //        return Unity.Physics.CapsuleCollider.Create(capsuleGeometry);
+    //    }
+    //
+    //    public static BlobAssetReference<Unity.Physics.Collider> CreateMesh(UnityEngine.Mesh mesh)
+    //    {
+    //        // Create the MeshCollider data
+    //        BlobAssetReference<Unity.Physics.Collider> meshColliderBlob =
+    //            Unity.Physics.MeshCollider.Create(mesh,
+    //            CollisionFilter.Default,
+    //            Unity.Physics.Material.Default);
+    //        return meshColliderBlob;
+    //    }
+    //
+    //    public static void DisposeEntity(Unity.Entities.Entity entity)
+    //    {
+    //        var em = UnitManager.Instance.ecsEntityManager;
+    //        if (em.Exists(entity))
+    //        {
+    //            if (em.HasComponent<Unity.Physics.PhysicsCollider>(entity))
+    //            {
+    //                em.GetComponentData<Unity.Physics.PhysicsCollider>(entity).Value.Dispose();
+    //                em.RemoveComponent<Unity.Physics.PhysicsCollider>(entity);
+    //            }
+    //            if (em.HasComponent<Unity.Physics.PhysicsMass>(entity))
+    //            {
+    //                em.RemoveComponent<Unity.Physics.PhysicsMass>(entity);
+    //            }
+    //            if (em.HasComponent<Unity.Physics.PhysicsVelocity>(entity))
+    //            {
+    //                em.RemoveComponent<Unity.Physics.PhysicsVelocity>(entity);
+    //            }
+    //            if (em.HasComponent<Unity.Physics.PhysicsWorldIndex>(entity))
+    //            {
+    //                em.RemoveComponent<Unity.Physics.PhysicsWorldIndex>(entity);
+    //            }
+    //            if (em.HasComponent<Unity.Physics.PhysicsDamping>(entity))
+    //            {
+    //                em.RemoveComponent<Unity.Physics.PhysicsDamping>(entity);
+    //            }
+    //            em.DestroyEntity(entity);
+    //        }
+    //    }
+    //}
+
     public static class HungarianAlgorithm
     {
         public static int[] Solve(float[,] costMatrix)
@@ -113,9 +213,10 @@ public static class Utilities
             }
         }
     }
+
     public static class VisibilityUtility
     {
-        public static bool IsPointVisible(Camera cam, Vector3 worldPos)
+        public static bool IsPointVisible(UnityEngine.Camera cam, Vector3 worldPos)
         {
             Vector3 viewportPos = cam.WorldToViewportPoint(worldPos);
             return (viewportPos.z > 0 &&

@@ -322,7 +322,15 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      idle_house_castle_age_2247_0: 2003974411660441921
+      idle_house_castle_age_2247_1: -5866029104528805927
+      idle_house_castle_age_2247_2: -7072664622409147749
+      idle_house_castle_age_2247_3: -6943750654040264681
+      idle_house_castle_age_2247_4: -7571308692997348937
+      idle_house_castle_age_2247_5: 2190443458627530165
+      idle_house_castle_age_2247_6: -6797747066819458641
+      idle_house_castle_age_2247_7: 6230754151988236621
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

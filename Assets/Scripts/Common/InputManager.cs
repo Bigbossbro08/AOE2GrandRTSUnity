@@ -734,7 +734,8 @@ public class InputManager : MonoBehaviour, IDeterministicUpdate
 
     public void SendInputCommand(InputCommand command)
     {
-        DeterministicUpdateManager.Instance.SendInputCommand(command);//.newDeterministicInputManager.SendInputCommand(command);
+        DeterministicUpdateManager.Instance.SendInputCommand(command);
+        //DeterministicUpdateManager.Instance.newDeterministicInputManager.SendInputCommand(command);
         return;
         if (command.action != "KeepAlive")
             NativeLogger.Log($"Command type recieved was: {command.action}");

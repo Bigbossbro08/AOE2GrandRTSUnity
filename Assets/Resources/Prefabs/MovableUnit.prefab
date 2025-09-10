@@ -582,6 +582,7 @@ GameObject:
   - component: {fileID: 1962381057880631117}
   - component: {fileID: 1853550513862272935}
   - component: {fileID: 3022484260400165635}
+  - component: {fileID: 5653931768659743968}
   m_Layer: 6
   m_Name: MovableUnit
   m_TagString: Military Unit
@@ -784,6 +785,19 @@ MonoBehaviour:
   damageData:
     attackValues: []
     armorValues: []
+--- !u!114 &5653931768659743968
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5063327841519701295}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a03157c81897ac4c8b85b097234af52, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  unit: {fileID: 2808056200127217721}
 --- !u!1 &5404947798866862044
 GameObject:
   m_ObjectHideFlags: 0

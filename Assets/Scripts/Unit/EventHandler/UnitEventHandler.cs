@@ -17,6 +17,7 @@ public class UnitEventHandler : MonoBehaviour
         OnProjectileAttack,
         OnCorpseSpawn,
         OnUnitSpawn,
+        OnDismountSpawn,
         OnUnitRemove,
         OnUnitKilled
     }
@@ -52,6 +53,7 @@ public class UnitEventHandler : MonoBehaviour
         RegisterEvent((int)EventID.OnProjectileAttack, Event_OnProjectileAttack);
         RegisterEvent((int)EventID.OnCorpseSpawn, Event_OnCorpseSpawn);
         RegisterEvent((int)EventID.OnUnitSpawn, Event_OnUnitSpawn);
+        RegisterEvent((int)EventID.OnDismountSpawn, Event_OnDismountSpawn);
         RegisterEvent((int)EventID.OnUnitRemove, Event_OnUnitRemove);
         RegisterEvent((int)EventID.OnUnitKilled, Event_OnUnitKilled);
     }
@@ -252,10 +254,10 @@ public class UnitEventHandler : MonoBehaviour
                             //DeadUnit deadUnit = UnitManager.Instance.deadUnitPool.Get();
                             //deadUnit.SetVisual(militaryUnit.corpse);
                             movableUnit.statComponent.OnDeathCallback?.Invoke(movableUnit.id);
+                            CallEventByID(EventID.OnCorpseSpawn, movableUnit.id, deadUnit.id);
                             UnitManager.Instance.ReleaseMovableUnitFromPool(movableUnit);
                             //UnitManager.Instance.movableUnitPool.Release(movableUnit);
-                            CallEventByID(EventID.OnCorpseSpawn, movableUnit.id, deadUnit.id);
-
+                            bool dismounted = false;
                             if (!string.IsNullOrEmpty(militaryUnit.dismounted_unit))
                             {
                                 System.Action<Unit> dismountedPreSpawn = (unit) =>
@@ -267,8 +269,11 @@ public class UnitEventHandler : MonoBehaviour
                                     dismountedUnit.transform.position = movableUnit.transform.position;
                                     dismountedUnit.transform.rotation = movableUnit.transform.rotation;
                                     dismountedUnit.unitDataName = militaryUnit.dismounted_unit;
+
+                                    CallEventByID(EventID.OnDismountSpawn, unit.id, movableUnit.id);
                                 };
                                 UnitManager.Instance.GetMovableUnitFromPool(dismountedPreSpawn);
+                                dismounted = true;
                             }
                         }
                     }
@@ -292,7 +297,13 @@ public class UnitEventHandler : MonoBehaviour
 
     private void Event_OnUnitSpawn(object[] obj)
     {
+        ulong selfId = (ulong)obj[0]; 
+    }
+
+    private void Event_OnDismountSpawn(object[] obj)
+    {
         ulong selfId = (ulong)obj[0];
+        ulong mountId = (ulong)obj[1];
     }
 
     private void Event_OnUnitRemove(object[] obj)
